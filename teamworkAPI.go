@@ -9,15 +9,15 @@ import (
 	"os"
 )
 
-type teamworkAPI struct {
+type connection struct {
 	APIKey         string `json:"apiKey"`
 	SiteName       string `json:"siteName"`
 	DataPreference string `json:"dataPreference"`
 	URL            string
 }
 
-// NewTeamworkAPI initializes a new instance used to generate Teamwork API calls.
-func NewTeamworkAPI(apiKey string, siteName string, dataPreference string) (*teamworkAPI, error) {
+// NewConnection initializes a new instance used to generate Teamwork API calls.
+func NewConnection(apiKey string, siteName string, dataPreference string) (*connection, error) {
 
 	var e string = ""
 
@@ -36,17 +36,17 @@ func NewTeamworkAPI(apiKey string, siteName string, dataPreference string) (*tea
 		return nil, errors.New("Missing required parameter(s):\n" + e)
 	}
 
-	t := new(teamworkAPI)
-	t.APIKey = apiKey
-	t.SiteName = siteName
-	t.URL = "https://" + siteName + ".teamwork.com/"
-	t.DataPreference = dataPreference
+	conn := new(connection)
+	conn.APIKey = apiKey
+	conn.SiteName = siteName
+	conn.URL = "https://" + siteName + ".teamwork.com/"
+	conn.DataPreference = dataPreference
 
-	return t, nil
+	return conn, nil
 }
 
-// NewTeamworkAPIFromJSON initializes a new instance based on json file.
-func NewTeamworkAPIFromJSON(pathToJSONFile string) (*teamworkAPI, error) {
+// NewConnectionFromJSON initializes a new instance based on json file.
+func NewConnectionFromJSON(pathToJSONFile string) (*connection, error) {
 	f, err := os.Open(pathToJSONFile)
 	defer f.Close()
 	if err != nil {
@@ -55,33 +55,34 @@ func NewTeamworkAPIFromJSON(pathToJSONFile string) (*teamworkAPI, error) {
 
 	byteValue, _ := ioutil.ReadAll(f)
 
-	t := new(teamworkAPI)
+	conn := new(connection)
 
-	json.Unmarshal(byteValue, &t)
+	json.Unmarshal(byteValue, &conn)
 
-	t.URL = "https://" + t.SiteName + ".teamwork.com/"
+	conn.URL = "https://" + conn.SiteName + ".teamwork.com/"
 
-	return t, nil
+	return conn, nil
 }
 
 // GetRequest performs a HTTP GET on the desired endpoint.
-func (t teamworkAPI) GetRequest(endpoint string) ([]byte, error) {
-
+func (conn connection) GetRequest(endpoint string) ([]byte, error) {
 	client := &http.Client{}
-	req, err := http.NewRequest("GET", t.URL+endpoint, nil)
-	req.Header.Add("Authorization", "Basic "+basicAuth(t.APIKey))
+
+	req, err := http.NewRequest("GET", conn.URL + endpoint + "." + conn.DataPreference, nil)
+
+	req.Header.Add("Authorization", "Basic " + basicAuth(conn.APIKey))
 
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
 	}
 
-	body, err := ioutil.ReadAll(resp.Body)
+	data, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}
 
-	return body, nil
+	return data, nil
 }
 
 func basicAuth(apiKey string) string {
