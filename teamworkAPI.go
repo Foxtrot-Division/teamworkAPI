@@ -4,8 +4,11 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
+	"net/url"
 	"os"
 )
 
@@ -64,11 +67,24 @@ func NewConnectionFromJSON(pathToJSONFile string) (*connection, error) {
 	return conn, nil
 }
 
-// GetRequest performs a HTTP GET on the desired endpoint.
-func (conn connection) GetRequest(endpoint string) ([]byte, error) {
+// GetRequest performs a HTTP GET on the desired endpoint, with the specific query parameters.
+func (conn connection) GetRequest(endpoint string, params map[string] interface{}) ([]byte, error) {
 	client := &http.Client{}
 
-	req, err := http.NewRequest("GET", conn.URL + endpoint + "." + conn.DataPreference, nil)
+	queryParams := ""
+	var err error
+
+	if params != nil {
+		query, err := FormatQueryString(params)
+
+		if err != nil {
+			return nil, err
+		}
+
+		queryParams += "?" + query.Encode()
+	}
+
+	req, err := http.NewRequest("GET", conn.URL + endpoint + "." + conn.DataPreference + queryParams, nil)
 
 	req.Header.Add("Authorization", "Basic " + basicAuth(conn.APIKey))
 
@@ -85,6 +101,32 @@ func (conn connection) GetRequest(endpoint string) ([]byte, error) {
 	return data, nil
 }
 
+// FormatQueryString generates a http query string from the supplied map containing request parameters.
+func FormatQueryString(params map[string] interface {}) (url.Values, error) {
+
+	queryString := url.Values{}
+	if params != nil {
+		for key, value := range params {
+			switch value.(type) {
+			case string:
+				queryString.Add(key, fmt.Sprintf("%s",value))
+			
+			case int:
+				queryString.Add(key, fmt.Sprintf("%d", value))
+			
+			case bool:
+				queryString.Add(key, fmt.Sprintf("%t", value))
+			
+			default:
+				log.Printf("Unsupported type (%T) for %s.\n", value, key)
+			}
+		}
+	}
+
+	return queryString, nil
+}
+
 func basicAuth(apiKey string) string {
 	return base64.StdEncoding.EncodeToString([]byte(apiKey))
 }
+

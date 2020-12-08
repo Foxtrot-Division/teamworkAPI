@@ -1,3 +1,3 @@
 module github.com/Foxtrot-Division/teamworkAPI
 
-go 1.15
+go 1.15 

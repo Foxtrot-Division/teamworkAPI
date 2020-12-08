@@ -38,7 +38,7 @@ func (conn connection) GetPeople(companyID string) (*People, error) {
 		endpoint = "people"
 	}
 
-	data, err := conn.GetRequest(endpoint)
+	data, err := conn.GetRequest(endpoint, nil)
 
 	if err != nil {
 		return nil, err
@@ -57,7 +57,7 @@ func (conn connection) GetPeople(companyID string) (*People, error) {
 
 // GetCompanies retrieves all companies from Teamwork.
 func (conn connection) GetCompanies() (*Companies, error) {
-	data, err := conn.GetRequest("companies")
+	data, err := conn.GetRequest("companies", nil)
 
 	if err != nil {
 		return nil, err
