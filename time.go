@@ -9,11 +9,21 @@ import (
 
 // TimeEntry models an individual time entry.
 type TimeEntry struct {
-	ID       string    `json:"id"`
-	PersonID string    `json:"person-id"`
-	Hours    string    `json:"hours"`
-	Minutes  string    `json:"minutes"`
-	Date     time.Time `json:"date"`
+	ID          string   `json:"id"`
+	PersonID    string   `json:"person-id"`
+	Description string   `json:"description"`
+	Hours       string   `json:"hours"`
+	Minutes     string   `json:"minutes"`
+	Date        string   `json:"date"`
+	IsBillable  string   `json:"isbillable"`
+	ProjectID   string   `json:"project-id"`
+	TaskID      string   `json:"todo-item-id"`
+}
+
+// TimeEntryJSON provides a wrapper around TimeEntry to properly marshal json
+// data when posting to API.
+type TimeEntryJSON struct {
+	Entry TimeEntry `json:"time-entry"`
 }
 
 // TimeEntries models an array of time entries.
@@ -21,7 +31,8 @@ type TimeEntries struct {
 	TimeEntries []TimeEntry `json:"time-entries"`
 }
 
-func (conn connection) GetTimeEntriesByPerson(personID string, from string, to string) (*TimeEntries, error) {
+// GetTimeEntriesByPerson retrieves time entries for a specific Teamwork user, for the specified time period.
+func (conn Connection) GetTimeEntriesByPerson(personID string, from string, to string) (*TimeEntries, error) {
 
 	queryParams := make(map[string]interface{})
 
@@ -60,6 +71,45 @@ func (conn connection) GetTimeEntriesByPerson(personID string, from string, to s
 	}
 
 	return t, nil
+}
+
+// PostTimeEntry posts an individual time entry to the specified task.
+func (conn *Connection) PostTimeEntry(taskID string, entry TimeEntry) (string, error) {
+	timeEntryJSON := TimeEntryJSON{
+		Entry: entry,
+	}
+
+	endpoint := "tasks/" + taskID + "/time_entries"
+
+	var status struct {
+		Status string `json:"STATUS"`
+		ID     string `json:"timeLogId"`
+	}
+
+	data, err := json.Marshal(timeEntryJSON)
+	if err != nil {
+		return "", err
+	}
+
+	res, err := conn.PostRequest(endpoint, data)
+	if err != nil {
+		return "", err
+	}
+
+	err = json.Unmarshal(res, &status)
+	if err != nil {
+		return "", err
+	}
+
+	if status.Status != "OK" {
+		return status.Status, fmt.Errorf("received error response (%s)", status.Status)
+	}
+
+	if status.ID == "" {
+		return "", fmt.Errorf("no id returned for time log")
+	}
+
+	return status.ID, nil
 }
 
 // SumHours returns the total hours for a specified user found in the TimeEntries array.

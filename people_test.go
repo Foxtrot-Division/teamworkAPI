@@ -8,6 +8,27 @@ import (
 	"testing"
 )
 
+func initPeopleTestConnection(t *testing.T) *Connection {
+	conn, err := NewConnectionFromJSON("./testdata/apiConfig.json")
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+
+	return conn
+}
+
+func TestGetPerson(t *testing.T) {
+	conn := initPeopleTestConnection(t)
+
+	p, err := conn.GetPersonByID("118616")
+	
+	if err != nil {
+		t.Errorf(err.Error())
+	}
+
+	fmt.Println(p)
+}
+
 func TestGetPeople(t *testing.T) {
 	conn, err := NewConnectionFromJSON("./testdata/apiConfig.json")
 
@@ -33,7 +54,7 @@ func TestGetPeople(t *testing.T) {
 
 	id := fmt.Sprintf("%v", c["company-with-people"])
 	
-	p, err := conn.GetPeople(string(id))
+	p, err := conn.GetPeopleByCompany(string(id))
 
 	if err != nil {
 		t.Errorf(err.Error())

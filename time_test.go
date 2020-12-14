@@ -2,6 +2,7 @@ package teamworkapi
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"testing"
@@ -9,11 +10,11 @@ import (
 )
 
 type TimeTestData struct {
-	People 		[]string `json:"people"`
-	TimePeriods	[] map[string] string `json:"time-periods"`
+	People      []string            `json:"people"`
+	TimePeriods []map[string]string `json:"time-periods"`
 }
 
-func initTestConnection(t *testing.T) *connection {
+func initTimeTestConnection(t *testing.T) *Connection {
 	conn, err := NewConnectionFromJSON("./testdata/apiConfig.json")
 	if err != nil {
 		t.Fatalf(err.Error())
@@ -22,18 +23,18 @@ func initTestConnection(t *testing.T) *connection {
 	return conn
 }
 
-func initTestData(t *testing.T) *TimeTestData {
+func initTimeTestData(t *testing.T) *TimeTestData {
 	testData := new(TimeTestData)
 
 	f, err := os.Open("./testdata/timeTestData.json")
 	defer f.Close()
-		
+
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
-		
+
 	raw, _ := ioutil.ReadAll(f)
-		
+
 	err = json.Unmarshal(raw, &testData)
 	if err != nil {
 		t.Fatalf(err.Error())
@@ -43,9 +44,9 @@ func initTestData(t *testing.T) *TimeTestData {
 }
 
 func TestGetTimeEntriesByPerson(t *testing.T) {
-	conn := initTestConnection(t)
+	conn := initTimeTestConnection(t)
 
-	testData := initTestData(t)
+	testData := initTimeTestData(t)
 
 	testDateLayout := "20060102"
 
@@ -74,14 +75,17 @@ func TestGetTimeEntriesByPerson(t *testing.T) {
 
 			for _, entry := range entries.TimeEntries {
 
-				entryTime := entry.Date
+				entryTime, err := time.Parse(time.RFC3339, entry.Date)
+				if err != nil {
+					t.Errorf(err.Error())
+				}
 				d := time.Date(entryTime.Year(), entryTime.Month(), entryTime.Day(), 0, 0, 0, 0, time.UTC)
 
 				if d.Before(fromDate) || d.After(toDate) {
 					t.Errorf("Entry (%s) is not within specified time range (%s - %s)!", d, fromDate, toDate)
 				}
 			}
-			
+
 		}
 	}
 
@@ -91,10 +95,34 @@ func TestGetTimeEntriesByPerson(t *testing.T) {
 	}
 }
 
+func TestPostTimeEntry(t *testing.T) {
+	
+	conn := initTimeTestConnection(t)
+
+	entry := TimeEntry{
+			PersonID: "118616",
+			Description: "Test entry.",
+			Hours: "0",
+			Minutes: "60",
+			Date: "20201209",
+			IsBillable: "false",
+		}
+
+	res, err := conn.PostTimeEntry("20029437", entry)
+
+	if err != nil {
+		t.Errorf(err.Error())
+	}
+
+	entry.ID = res
+
+	fmt.Printf("TimeEntry ID: %s", entry.ID)
+}
+
 func TestSumHours(t *testing.T) {
 
-	conn := initTestConnection(t)
-	testData := initTestData(t)
+	conn := initTimeTestConnection(t)
+	testData := initTimeTestData(t)
 
 	for _, p := range testData.People {
 		for _, tp := range testData.TimePeriods {
