@@ -2,6 +2,8 @@ package teamworkapi
 
 import (
 	"encoding/json"
+	"fmt"
+	"strconv"
 )
 
 // Person models an individual Teamwork user.
@@ -13,6 +15,7 @@ type Person struct {
 	Email		string `json:"user-name"`
 }
 
+// PersonJSON is a wrapper to facilitate marshalling of Person data to json.
 type PersonJSON struct {
 	Person *Person `json:"person"`
 }
@@ -60,9 +63,18 @@ func (conn Connection) GetPeopleByCompany(companyID string) (*People, error) {
 	return p, nil
 }
 
-// GetPersonByID retrieves a specific person based on ID.
-func (conn Connection) GetPersonByID(id string) (*Person, error) {
-	endpoint := "people/" + id
+// GetPersonByID retrieves a specific person based on ID. 
+func (conn Connection) GetPersonByID(ID string) (*Person, error) {
+
+	_, err := strconv.Atoi(ID)
+	if err != nil {
+		if ID == "" {
+			return nil, fmt.Errorf("missing required parameter(s): ID")
+		}
+		return nil, fmt.Errorf("invalid value (%s) for ID", ID)
+	}
+
+	endpoint := "people/" + ID
 
 	data, err := conn.GetRequest(endpoint, nil)
 
@@ -78,11 +90,16 @@ func (conn Connection) GetPersonByID(id string) (*Person, error) {
 		return nil, err
 	}
 
+	if p.Person == nil {
+		return nil, fmt.Errorf("failed to retrieve user with ID (%s)", ID)
+	}
+
 	return p.Person, nil
 }
 
 // GetCompanies retrieves all companies from Teamwork.
 func (conn Connection) GetCompanies() (*Companies, error) {
+
 	data, err := conn.GetRequest("companies", nil)
 
 	if err != nil {

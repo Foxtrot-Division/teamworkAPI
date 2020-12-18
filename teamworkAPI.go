@@ -23,23 +23,27 @@ type Connection struct {
 }
 
 // NewConnection initializes a new instance used to generate Teamwork API calls.
+// If dataPreference is empty string (""), it will default to json.
 func NewConnection(apiKey string, siteName string, dataPreference string) (*Connection, error) {
 
-	var e string = ""
+	errBuff := ""
 
 	if apiKey == "" {
-		e += "apiKey\n"
+		errBuff += "apiKey"
 	}
 	if siteName == "" {
-		e += "siteName"
+		if errBuff != "" {
+			errBuff += ", "
+		}
+		errBuff += "siteName"
+	}
+
+	if errBuff != "" {
+		return nil, fmt.Errorf("missing required parameter(s): %s", errBuff)
 	}
 
 	if dataPreference == "" {
 		dataPreference = "json"
-	}
-
-	if e != "" {
-		return nil, errors.New("Missing required parameter(s):\n" + e)
 	}
 
 	conn := new(Connection)
@@ -53,8 +57,11 @@ func NewConnection(apiKey string, siteName string, dataPreference string) (*Conn
 
 // NewConnectionFromJSON initializes a new instance based on json file.
 func NewConnectionFromJSON(pathToJSONFile string) (*Connection, error) {
+
 	f, err := os.Open(pathToJSONFile)
+
 	defer f.Close()
+	
 	if err != nil {
 		return nil, errors.New("Failed to open JSON file at " + pathToJSONFile)
 	}
@@ -65,6 +72,27 @@ func NewConnectionFromJSON(pathToJSONFile string) (*Connection, error) {
 
 	json.Unmarshal(byteValue, &conn)
 
+	errBuff := ""
+
+	if conn.APIKey == "" {
+		errBuff += "apiKey"
+	}
+
+	if conn.SiteName == "" {
+		if errBuff != "" {
+			errBuff += ", "
+		}
+		errBuff += "siteName"
+	}
+
+	if errBuff != "" {
+		return nil, fmt.Errorf("missing required parameter(s): %s", errBuff)
+	}
+
+	if conn.DataPreference == "" {
+		conn.DataPreference = "json"
+	}
+
 	conn.URL = "https://" + conn.SiteName + ".teamwork.com/"
 
 	return conn, nil
@@ -72,14 +100,19 @@ func NewConnectionFromJSON(pathToJSONFile string) (*Connection, error) {
 
 // GetRequest performs a HTTP GET on the desired endpoint, with the specific query parameters.
 func (conn Connection) GetRequest(endpoint string, params map[string]interface{}) ([]byte, error) {
+	
+	if endpoint == "" {
+		return nil, fmt.Errorf("missing required parameter(s): endpoint")
+	}
+
 	client := &http.Client{}
 
 	queryParams := ""
+	
 	var err error
 
 	if params != nil {
 		query, err := FormatQueryString(params)
-
 		if err != nil {
 			return nil, err
 		}

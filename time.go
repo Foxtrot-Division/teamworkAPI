@@ -14,7 +14,7 @@ type TimeEntry struct {
 	Description string   `json:"description"`
 	Hours       string   `json:"hours"`
 	Minutes     string   `json:"minutes"`
-	Date        string   `json:"date"`
+	Date        string   `json:"date"`			// expected format is YYYYMMDD
 	IsBillable  string   `json:"isbillable"`
 	ProjectID   string   `json:"project-id"`
 	TaskID      string   `json:"todo-item-id"`
@@ -23,7 +23,7 @@ type TimeEntry struct {
 // TimeEntryJSON provides a wrapper around TimeEntry to properly marshal json
 // data when posting to API.
 type TimeEntryJSON struct {
-	Entry TimeEntry `json:"time-entry"`
+	Entry *TimeEntry `json:"time-entry"`
 }
 
 // TimeEntries models an array of time entries.
@@ -33,28 +33,52 @@ type TimeEntries struct {
 
 // GetTimeEntriesByPerson retrieves time entries for a specific Teamwork user, for the specified time period.
 func (conn Connection) GetTimeEntriesByPerson(personID string, from string, to string) (*TimeEntries, error) {
+	
+	errBuff := ""
+
+	if personID == "" {
+		errBuff += "personID"
+	} else {
+		_, err := strconv.Atoi(personID)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if from == "" {
+		if errBuff != "" {
+			errBuff += ", "
+		}
+		errBuff += "from"
+	}
+
+	if to == "" {
+		if errBuff != "" {
+			errBuff += ", "
+		}
+		errBuff += "to"
+	}
+
+	if errBuff != "" {
+		return nil, fmt.Errorf("missing required parameter(s): %s", errBuff)
+	}
 
 	queryParams := make(map[string]interface{})
 
-	if personID != "" {
-		queryParams["userId"] = personID
-	}
 
-	if from != "" {
-		_, err := time.Parse("20060102", from)
-		if err != nil {
-			return nil, fmt.Errorf("invalid format for from parameter.  Should be YYYYMMDD, but found %s", from)
-		}
-		queryParams["fromdate"] = from
+	queryParams["userId"] = personID
+	
+	_, err := time.Parse("20060102", from)
+	if err != nil {
+		return nil, fmt.Errorf("invalid format for from parameter.  Should be YYYYMMDD, but found %s", from)
 	}
+	queryParams["fromdate"] = from
 
-	if to != "" {
-		_, err := time.Parse("20060102", to)
-		if err != nil {
-			return nil, fmt.Errorf("invalid format for to parameter.  Should be YYYYMMDD, but found %s", from)
-		}
-		queryParams["todate"] = to
+	_, err = time.Parse("20060102", to)
+	if err != nil {
+		return nil, fmt.Errorf("invalid format for to parameter.  Should be YYYYMMDD, but found %s", from)
 	}
+	queryParams["todate"] = to
 
 	data, err := conn.GetRequest("time_entries", queryParams)
 
@@ -73,13 +97,39 @@ func (conn Connection) GetTimeEntriesByPerson(personID string, from string, to s
 	return t, nil
 }
 
-// PostTimeEntry posts an individual time entry to the specified task.
-func (conn *Connection) PostTimeEntry(taskID string, entry TimeEntry) (string, error) {
+// PostTimeEntry posts an individual time entry to the specified task.  The time
+// entry is posted to the task ID found in the entry parameter.
+func (conn *Connection) PostTimeEntry(entry *TimeEntry) (string, error) {
+
+	errBuff := ""
+
+	if entry.PersonID == "" {
+		errBuff += "PersonID"
+	}
+
+	if entry.TaskID == "" {
+		if errBuff != "" {
+			errBuff += ", "
+		}
+		errBuff += "TaskID"
+	}
+
+	if entry.Date == "" {
+		if errBuff != "" {
+			errBuff += ", "
+		}
+		errBuff += "Date"
+	}
+
+	if errBuff != "" {
+		return "", fmt.Errorf("time entry is missing required field(s): %s", errBuff)
+	}
+
 	timeEntryJSON := TimeEntryJSON{
 		Entry: entry,
 	}
 
-	endpoint := "tasks/" + taskID + "/time_entries"
+	endpoint := "tasks/" + entry.TaskID + "/time_entries"
 
 	var status struct {
 		Status string `json:"STATUS"`
@@ -108,6 +158,8 @@ func (conn *Connection) PostTimeEntry(taskID string, entry TimeEntry) (string, e
 	if status.ID == "" {
 		return "", fmt.Errorf("no id returned for time log")
 	}
+
+	entry.ID = status.ID
 
 	return status.ID, nil
 }

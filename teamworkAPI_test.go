@@ -8,54 +8,131 @@ import (
 )
 
 func TestNewConnection(t *testing.T) {
-	key := "someKey"
-	site := "someSite"
-	dataPref := "json"
 
-	conn, err := NewConnection(key, site, dataPref)
-
-	if err != nil {
-		t.Fatalf(fmt.Sprintf("%s", err))
+	// test error conditions
+	var tests1 = []struct {
+		key			string
+		site 		string
+		dataPref 	string
+		err  		bool
+		want 		string
+	}{
+		{key: "someKey", site: "someSite", dataPref: "json", err: false, want: ""},
+		{key: "123456!$", site:"", dataPref:"json", err: true, want: "missing required parameter(s): siteName"},
+		{key: "", site:"", dataPref:"", err: true, want:"missing required parameter(s): apiKey, siteName"},
+		{key: "buddha", site:"belly", dataPref:"", err: false, want:""},
 	}
 
-	if conn.APIKey != key {
-		t.Errorf("apiKey (%s) should be (%s)", conn.APIKey, key)
+	// test default setting for dataPreference
+	var tests2 = []struct {
+		key			string
+		site 		string
+		dataPref 	string
+		want 		string
+	}{
+		{key: "someKey", site: "someSite", dataPref: "", want: "json"},
+		{key: "vader", site:"deathstar", dataPref:"json", want: "json"},
+		{key: "gold", site:"bravo", dataPref:"someFormat", want: "someFormat"},
 	}
 
-	if conn.SiteName != site {
-		t.Errorf("siteName (%s) should be (%s)", conn.SiteName, site)
+	for _, v := range tests1 {
+
+		conn, err := NewConnection(v.key, v.site, v.dataPref)
+
+		if err != nil {
+			if !v.err {
+				t.Errorf(err.Error())
+			} else {
+				if v.want != err.Error() {
+					t.Errorf("expected error string (%s) but got (%s)", v.want, err.Error())
+				}
+			}
+		} else {
+			if v.err {
+				t.Errorf("expected error for input (key: %s, site: %s, dataPref: %s)", v.key, v.site, v.dataPref)
+			} else {
+				if conn.APIKey != v.key {
+					t.Errorf("expected APIKey (%s) but got (%s)", v.key, conn.APIKey)
+				}
+		
+				if conn.SiteName != v.site {
+					t.Errorf("expected SiteName(%s) but got (%s)", v.site, conn.SiteName)
+				}
+			}
+		}
 	}
 
-	if conn.DataPreference != dataPref {
-		t.Errorf("dataPreference (%s) should be (%s)", conn.DataPreference, dataPref)
-	}
+	for _, v := range tests2 {
 
-	conn, err = NewConnection(key, site, "")
+		conn, err := NewConnection(v.key, v.site, v.dataPref)
 
-	if err != nil {
-		t.Fatalf(fmt.Sprintf("%s", err))
-	}
+		if err != nil {
+			t.Errorf(err.Error())
+		}
 
-	if conn.DataPreference != "json" {
-		t.Errorf("dataPreference (%s) should have defaulted to json", conn.DataPreference)
-	}
-
-	conn, err = NewConnection("", "", "")
-
-	if err == nil {
-		t.Errorf("NewTeamworkAPI call was allowed with empty string parameter values.")
+		if conn.DataPreference != v.want {
+			t.Errorf("expected DataPreference (%s) but got (%s)", v.want, conn.DataPreference)
+		}
 	}
 }
 
 func TestNewTeamworkAPIFromJSON(t *testing.T) {
-	conn, err := NewConnectionFromJSON("./testdata/apiConfig.json")
 
-	if err != nil {
-		t.Fatalf(fmt.Sprintf("%s", err))
+	// test error conditions
+	var tests1 = []struct {
+		fileName	string
+		err  		bool
+		want 		string
+	}{
+		{fileName: "apiConfigTestData1.json", err: false, want: ""},
+		{fileName: "apiConfigTestData2.json", err: true, want: "missing required parameter(s): apiKey"},
+		{fileName: "apiConfigTestData3.json", err: true, want:"missing required parameter(s): apiKey, siteName"},
+		{fileName: "badFileName.json", err: true, want:"Failed to open JSON file at ./testdata/badFileName.json"},
 	}
 
-	if conn.URL != "https://"+conn.SiteName+".teamwork.com/" {
-		t.Errorf("URL (%s) not formed correctly", conn.URL)
+	// test default setting for dataPreference
+	var tests2 = []struct {
+		fileName	string
+		want 		string
+	}{
+		{fileName: "apiConfigTestData4.json", want: "json"},
+		{fileName: "apiConfigTestData5.json", want: "someFormat"},
+	}
+
+	for _, v := range tests1 {
+
+		conn, err := NewConnectionFromJSON("./testdata/" + v.fileName)
+
+		if err != nil {
+			if !v.err {
+				t.Errorf(err.Error())
+			} else {
+				if v.want != err.Error() {
+					t.Errorf("expected error string (%s) but got (%s)", v.want, err.Error())
+				}
+			}
+		} else {
+			if v.err {
+				t.Errorf("expected error for input (key: %s, site: %s, dataPref: %s)", conn.APIKey, conn.SiteName, conn.DataPreference)
+			} else {
+				if conn.URL != "https://" + conn.SiteName + ".teamwork.com/" {
+					t.Errorf("URL (%s) not formed correctly", conn.URL)
+				}
+			}
+		}
+	}
+
+	for _, v := range tests2 {
+
+		conn, err := NewConnectionFromJSON("./testdata/" + v.fileName)
+
+		if err != nil {
+			t.Errorf(err.Error())
+		}
+
+		if conn.DataPreference != v.want {
+			t.Errorf("expected DataPreference (%s) but got (%s)", v.want, conn.DataPreference)
+		}
 	}
 }
 
@@ -63,17 +140,22 @@ func TestGetRequest(t *testing.T) {
 
 	var raw interface{}
 
+	// test sample of good/bad endpoints
 	var tests = []struct {
-		endpoint string
-		params   map[string]interface{}
-		expect   string
+		endpoint 	string
+		params   	map[string]interface{}
+		want   		string
 	}{
 		{"projects", nil, "OK"},
 		{"people", nil, "OK"},
 		{"companies", nil, "OK"},
+		{"buffalo", nil, ""},
+		{"people", map[string]interface{}{"sort":"company"}, "OK"},
+		{"projects", map[string]interface{}{"status":"ACTIVE", "includePeople": true}, "OK"},
+		{"tasks", map[string]interface{}{"sort":"project", "includeArchivedProjects": true}, "OK"},
 	}
 
-	conn, _ := NewConnectionFromJSON("./testdata/apiConfig.json")
+	conn, _ := NewConnectionFromJSON("./testdata/apiConfigTestData1.json")
 
 	for _, tt := range tests {
 
@@ -86,13 +168,16 @@ func TestGetRequest(t *testing.T) {
 		err = json.Unmarshal(data, &raw)
 
 		if err != nil {
+			fmt.Println(string(data))
 			t.Errorf(err.Error())
 		}
 
 		res := raw.(map[string]interface{})
 
-		if res["STATUS"] != tt.expect {
-			t.Errorf("Received STATUS (%s) but expected (%s)", res["STATUS"], tt.expect)
+		if res["STATUS"] != tt.want {
+			if res["STATUS"] == nil && tt.want != "" {
+				t.Errorf("Received response (%s) but expected (%s)", res["STATUS"], tt.want)
+			}
 		}
 
 	}
@@ -101,8 +186,8 @@ func TestGetRequest(t *testing.T) {
 func TestFormatQueryString(t *testing.T) {
 
 	var tests = []struct {
-		params map[string]interface{}
-		expect string
+		params 	map[string]interface{}
+		want 	string
 	}{
 		{map[string]interface{}{"key1": "val1", "key2": true, "key3": 10}, url.Values{"key1": []string{"val1"}, "key2": []string{"true"}, "key3": []string{"10"}}.Encode()},
 		{map[string]interface{}{"key1": false, "key2": "val-2", "key3": 133}, url.Values{"key1": []string{"false"}, "key2": []string{"val-2"}, "key3": []string{"133"}}.Encode()},
@@ -110,16 +195,14 @@ func TestFormatQueryString(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		result, err := FormatQueryString(tt.params)
 
+		result, err := FormatQueryString(tt.params)
 		if err != nil {
 			t.Errorf(err.Error())
 		}
 
-		if result.Encode() != tt.expect {
-			t.Errorf("Expected: %s\nGot: %s\n", result.Encode(), tt.expect)
+		if result.Encode() != tt.want {
+			t.Errorf("Expected: %s\nGot: %s\n", result.Encode(), tt.want)
 		}
-
 	}
-
 }

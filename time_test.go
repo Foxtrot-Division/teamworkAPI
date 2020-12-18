@@ -2,7 +2,6 @@ package teamworkapi
 
 import (
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"os"
 	"testing"
@@ -15,7 +14,7 @@ type TimeTestData struct {
 }
 
 func initTimeTestConnection(t *testing.T) *Connection {
-	conn, err := NewConnectionFromJSON("./testdata/apiConfig.json")
+	conn, err := NewConnectionFromJSON("./testdata/apiConfigTestData1.json")
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
@@ -44,6 +43,7 @@ func initTimeTestData(t *testing.T) *TimeTestData {
 }
 
 func TestGetTimeEntriesByPerson(t *testing.T) {
+
 	conn := initTimeTestConnection(t)
 
 	testData := initTimeTestData(t)
@@ -75,6 +75,10 @@ func TestGetTimeEntriesByPerson(t *testing.T) {
 
 			for _, entry := range entries.TimeEntries {
 
+				if entry.PersonID != p {
+					t.Errorf("Found user ID (%s) but expected only (%s)", entry.PersonID, p)
+				}
+
 				entryTime, err := time.Parse(time.RFC3339, entry.Date)
 				if err != nil {
 					t.Errorf(err.Error())
@@ -85,38 +89,83 @@ func TestGetTimeEntriesByPerson(t *testing.T) {
 					t.Errorf("Entry (%s) is not within specified time range (%s - %s)!", d, fromDate, toDate)
 				}
 			}
-
 		}
 	}
 
-	_, err := conn.GetTimeEntriesByPerson("1234", "badformat", "2010-02-03")
-	if err == nil {
-		t.Errorf("invalid string allowed for from/to parameter")
+	var tests = []struct {
+		ID 		string
+		from 	string
+		to 		string
+		want	string
+	}{
+		{"", "20201012", "20201013", "missing required parameter(s): personID"},
+		{"abc", "", "", "strconv.Atoi: parsing \"abc\": invalid syntax"},
+		{"12345", "10-12-2020", "20201013", "invalid format for from parameter.  Should be YYYYMMDD, but found 10-12-2020"},
 	}
+
+	for _, v := range tests {
+		_, err := conn.GetTimeEntriesByPerson(v.ID, v.from, v.to)
+		if err != nil {
+			if err.Error() != v.want {
+				t.Errorf("expected error (%s) but got (%s)", v.want, err.Error())
+			}
+		} else {
+			t.Errorf("Expected error for userID (%s)", v.ID)
+		}
+	}		
 }
 
 func TestPostTimeEntry(t *testing.T) {
 	
 	conn := initTimeTestConnection(t)
 
-	entry := TimeEntry{
-			PersonID: "118616",
-			Description: "Test entry.",
-			Hours: "0",
-			Minutes: "60",
-			Date: "20201209",
-			IsBillable: "false",
-		}
-
-	res, err := conn.PostTimeEntry("20029437", entry)
-
-	if err != nil {
-		t.Errorf(err.Error())
+	var tests = []struct {
+		personID 	string
+		description string
+		hours 		string
+		minutes		string
+		date		string
+		isBillable  string
+		taskID 		string
+		error		bool
+		want		string
+	}{
+		{"118616", "Test entry.", "0", "60", "20201209", "false", "20029437", false, ""},
+		{"", "Test entry.", "0", "0", "", "true", "", true, "time entry is missing required field(s): PersonID, TaskID, Date"},
 	}
 
-	entry.ID = res
+	for _, v := range tests {
 
-	fmt.Printf("TimeEntry ID: %s", entry.ID)
+		entry := &TimeEntry{
+			PersonID: v.personID,
+			Description: v.description,
+			Hours: v.hours,
+			Minutes: v.minutes,
+			Date: v.date,
+			IsBillable: v.isBillable,
+			TaskID: v.taskID,
+		}
+		
+		res, err := conn.PostTimeEntry(entry)
+
+		if err != nil {
+			if !v.error {
+				t.Errorf(err.Error())
+			} else {
+				if err.Error() != v.want {
+					t.Errorf("expected error (%s) but got (%s)", v.want, err.Error())
+				}
+			}
+		} else {
+			if v.error {
+				t.Errorf("expected error")
+			} else {
+				if entry.ID != res {
+					t.Errorf("ID (%s) not set to expected value (%s)", entry.ID, res)
+				}
+			}
+		}
+	}		
 }
 
 func TestSumHours(t *testing.T) {

@@ -8,8 +8,12 @@ import (
 	"testing"
 )
 
+type peopleTestData struct {
+	People []*Person	`json:"people"`
+}
+
 func initPeopleTestConnection(t *testing.T) *Connection {
-	conn, err := NewConnectionFromJSON("./testdata/apiConfig.json")
+	conn, err := NewConnectionFromJSON("./testdata/apiConfigTestData1.json")
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
@@ -17,16 +21,85 @@ func initPeopleTestConnection(t *testing.T) *Connection {
 	return conn
 }
 
-func TestGetPerson(t *testing.T) {
-	conn := initPeopleTestConnection(t)
+func loadPeopleTestData(t *testing.T) *peopleTestData {
 
-	p, err := conn.GetPersonByID("118616")
+	f, err := os.Open("./testdata/peopleTestData.json")
+	defer f.Close()
 	
 	if err != nil {
 		t.Errorf(err.Error())
 	}
 
-	fmt.Println(p)
+	data := new(peopleTestData)
+	
+	raw, err := ioutil.ReadAll(f)
+	if err != nil {
+		t.Errorf(err.Error())
+	}
+
+	err = json.Unmarshal(raw, &data)
+	if err != nil {
+		t.Errorf(err.Error())
+	}
+
+	return data
+}
+
+func TestGetPersonByID(t *testing.T) {
+	
+	testData := loadPeopleTestData(t)
+
+	conn := initPeopleTestConnection(t)
+
+	// test valid cases
+	for _, v := range testData.People {
+
+		p, err := conn.GetPersonByID(v.ID)
+		if err != nil {
+			t.Errorf(err.Error())
+		}
+
+		if p == nil {
+			t.Errorf("No data returned for ID (%s)", v.ID)
+		} else {
+			if p.Email != v.Email {
+				t.Errorf("Expected email (%s) but got (%s)", v.Email, p.Email)
+			}
+			
+			if p.FirstName != v.FirstName {
+				t.Errorf("Expected FirstName (%s) but got (%s)", v.FirstName, p.FirstName)
+			}
+
+			if p.LastName != v.LastName {
+				t.Errorf("Expected LastName (%s) but got (%s)", v.LastName, p.LastName)
+			}
+
+			if p.CompanyName != v.CompanyName {
+				t.Errorf("Expected CompanyName (%s) but got (%s)", v.CompanyName, p.CompanyName)
+			}
+		}
+	}
+
+	// test error responses
+	var tests = []struct {
+		ID 		string
+		want	string
+	}{
+		{"123456", "failed to retrieve user with ID (123456)"},
+		{"bad-content", "invalid value (bad-content) for ID"},
+		{"", "missing required parameter(s): ID"},
+	}
+
+	for _, v := range tests {
+		_, err := conn.GetPersonByID(v.ID)
+		if err != nil {
+			if err.Error() != v.want {
+				t.Errorf("expected error (%s) but got (%s)", v.want, err.Error())
+			}
+		} else {
+			t.Errorf("Expected error for userID (%s)", v.ID)
+		}
+	}		
 }
 
 func TestGetPeople(t *testing.T) {
@@ -66,11 +139,8 @@ func TestGetPeople(t *testing.T) {
 }
 
 func TestGetCompanies(t *testing.T) {
-	conn, err := NewConnectionFromJSON("./testdata/apiConfig.json")
 
-	if err != nil {
-		t.Errorf(err.Error())
-	}
+	conn := initPeopleTestConnection(t)
 
 	c, err := conn.GetCompanies()
 
