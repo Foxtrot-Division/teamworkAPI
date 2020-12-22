@@ -2,14 +2,21 @@ package teamworkapi
 
 import (
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"os"
 	"testing"
 )
 
 type peopleTestData struct {
-	People []*Person	`json:"people"`
+	ExampleUserID 		string 	`json:"exampleUserID"`
+	CompanyID   		string 	`json:"companyID"`
+	CompanyTotalUsers	int 	`json:"companyTotalUsers"`
+	ExampleProjectID 	string 	`json:"exampleProjectID"`
+	ProjectTotalUsers 	int		`json:"projectTotalUsers"`
+}
+
+type peopleTestDataJSON struct {
+	Data []peopleTestData `json:"data"`
 }
 
 func initPeopleTestConnection(t *testing.T) *Connection {
@@ -21,7 +28,7 @@ func initPeopleTestConnection(t *testing.T) *Connection {
 	return conn
 }
 
-func loadPeopleTestData(t *testing.T) *peopleTestData {
+func loadPeopleTestData(t *testing.T) []peopleTestData {
 
 	f, err := os.Open("./testdata/peopleTestData.json")
 	defer f.Close()
@@ -30,7 +37,7 @@ func loadPeopleTestData(t *testing.T) *peopleTestData {
 		t.Errorf(err.Error())
 	}
 
-	data := new(peopleTestData)
+	data := new(peopleTestDataJSON)
 	
 	raw, err := ioutil.ReadAll(f)
 	if err != nil {
@@ -42,7 +49,7 @@ func loadPeopleTestData(t *testing.T) *peopleTestData {
 		t.Errorf(err.Error())
 	}
 
-	return data
+	return data.Data
 }
 
 func TestGetPersonByID(t *testing.T) {
@@ -52,30 +59,22 @@ func TestGetPersonByID(t *testing.T) {
 	conn := initPeopleTestConnection(t)
 
 	// test valid cases
-	for _, v := range testData.People {
+	for _, v := range testData {
 
-		p, err := conn.GetPersonByID(v.ID)
+		p, err := conn.GetPersonByID(v.ExampleUserID)
 		if err != nil {
 			t.Errorf(err.Error())
 		}
 
 		if p == nil {
-			t.Errorf("No data returned for ID (%s)", v.ID)
+			t.Errorf("No data returned for ID (%s)", v.ExampleUserID)
 		} else {
-			if p.Email != v.Email {
-				t.Errorf("Expected email (%s) but got (%s)", v.Email, p.Email)
+			if p.CompanyName == "" {
+				t.Errorf("no company name returned for user ID (%s)", v.ExampleUserID)
 			}
 			
-			if p.FirstName != v.FirstName {
-				t.Errorf("Expected FirstName (%s) but got (%s)", v.FirstName, p.FirstName)
-			}
-
-			if p.LastName != v.LastName {
-				t.Errorf("Expected LastName (%s) but got (%s)", v.LastName, p.LastName)
-			}
-
-			if p.CompanyName != v.CompanyName {
-				t.Errorf("Expected CompanyName (%s) but got (%s)", v.CompanyName, p.CompanyName)
+			if p.Email == "" {
+				t.Errorf("no email returned for user ID (%s)", v.ExampleUserID)
 			}
 		}
 	}
@@ -102,39 +101,70 @@ func TestGetPersonByID(t *testing.T) {
 	}		
 }
 
+func TestGetPeopleByCompany(t *testing.T) {
+
+	testData := loadPeopleTestData(t)
+
+	conn := initPeopleTestConnection(t)
+
+	for _, v := range testData {
+
+		p, err := conn.GetPeopleByCompany(v.CompanyID)
+
+		if err != nil {
+			t.Errorf(err.Error())
+		}
+	
+		if len(p) != v.CompanyTotalUsers {
+			t.Errorf("expected (%d) users for company ID (%s) but got (%d)", v.CompanyTotalUsers, v.CompanyID, len(p))
+		}
+	}
+}
+
 func TestGetPeople(t *testing.T) {
-	conn, err := NewConnectionFromJSON("./testdata/apiConfig.json")
 
+	testData := loadPeopleTestData(t)
+
+	conn := initPeopleTestConnection(t)
+
+	userIDs := ""
+	numberUsers := 0
+
+	for _, v := range testData {
+
+		if userIDs != "" {
+			userIDs += ","
+		}
+
+		userIDs += v.ExampleUserID
+		
+		q1 := PeopleQueryParams {
+			ProjectID: v.ExampleProjectID,
+		}
+	
+		people, err := conn.GetPeople(q1)
+		if err != nil {
+			t.Errorf(err.Error())
+		}
+	
+		if len(people) != v.ProjectTotalUsers {
+			t.Errorf("expected (%d) users but got (%d) %s", v.ProjectTotalUsers, len(people), conn.RequestURL)
+		}
+
+		numberUsers++
+	}
+
+	q2 := PeopleQueryParams {
+		UserID: userIDs,
+	}
+
+	people, err := conn.GetPeople(q2)
 	if err != nil {
 		t.Errorf(err.Error())
 	}
 
-	var c map[string] interface{}
-
-	f, err := os.Open("./testdata/companyTestData.json")
-	defer f.Close()
-	
-	if err != nil {
-		t.Errorf(err.Error())
-	}
-	
-	data, _ := ioutil.ReadAll(f)
-	
-	err = json.Unmarshal(data, &c)
-	if err != nil {
-		t.Fatal(err.Error())
-	}
-
-	id := fmt.Sprintf("%v", c["company-with-people"])
-	
-	p, err := conn.GetPeopleByCompany(string(id))
-
-	if err != nil {
-		t.Errorf(err.Error())
-	}
-
-	if len(p.People) < 1 {
-		t.Errorf("No people returned for company ID %s", id)
+	if len(people) != numberUsers {
+		t.Errorf("expected (%d) users but got (%d) %s", numberUsers, len(people), conn.RequestURL)
 	}
 }
 
@@ -148,7 +178,7 @@ func TestGetCompanies(t *testing.T) {
 		t.Errorf(err.Error())
 	}
 
-	if len(c.Companies) < 1 {
+	if len(c) < 1 {
 		t.Errorf("No companies returned.")
 	}
 }

@@ -3,9 +3,27 @@ package teamworkapi
 import (
 	"encoding/json"
 	"fmt"
-	"net/url"
 	"testing"
+
+	"github.com/google/go-querystring/query"
 )
+
+type GenericQueryParams struct {
+	Sort string `url:"sort,omitempty"`
+	Status string `url:"status,omitempty"`
+	IncludePeople bool `url:"includePeople,omitempty"`
+	IncludeArchivedProjects bool `url:"includeArchivedProjects,omitempty"`
+}
+
+func (params GenericQueryParams) FormatQueryParams() (string, error) {
+	
+	p, err := query.Values(params)
+	if err != nil {
+		return "", err
+	}
+
+	return p.Encode(), nil
+}
 
 func TestNewConnection(t *testing.T) {
 
@@ -143,21 +161,21 @@ func TestGetRequest(t *testing.T) {
 	// test sample of good/bad endpoints
 	var tests = []struct {
 		endpoint 	string
-		params   	map[string]interface{}
+		params   	GenericQueryParams
 		want   		string
 	}{
-		{"projects", nil, "OK"},
-		{"people", nil, "OK"},
-		{"companies", nil, "OK"},
-		{"buffalo", nil, ""},
-		{"people", map[string]interface{}{"sort":"company"}, "OK"},
-		{"projects", map[string]interface{}{"status":"ACTIVE", "includePeople": true}, "OK"},
-		{"tasks", map[string]interface{}{"sort":"project", "includeArchivedProjects": true}, "OK"},
+		{"projects", GenericQueryParams{}, "OK"},
+		{"people", GenericQueryParams{}, "OK"},
+		{"companies", GenericQueryParams{}, "OK"},
+		{"buffalo", GenericQueryParams{}, ""},
+		{"people", GenericQueryParams {Sort: "company"}, "OK"},
+		{"projects", GenericQueryParams {Status: "ACTIVE", IncludePeople: true}, "OK"},
+		{"tasks", GenericQueryParams{Sort: "project", IncludeArchivedProjects: true}, "OK"},
 	}
 
 	conn, _ := NewConnectionFromJSON("./testdata/apiConfigTestData1.json")
 
-	for _, tt := range tests {
+	for i, tt := range tests {
 
 		data, err := conn.GetRequest(tt.endpoint, tt.params)
 
@@ -168,7 +186,6 @@ func TestGetRequest(t *testing.T) {
 		err = json.Unmarshal(data, &raw)
 
 		if err != nil {
-			fmt.Println(string(data))
 			t.Errorf(err.Error())
 		}
 
@@ -176,33 +193,8 @@ func TestGetRequest(t *testing.T) {
 
 		if res["STATUS"] != tt.want {
 			if res["STATUS"] == nil && tt.want != "" {
-				t.Errorf("Received response (%s) but expected (%s)", res["STATUS"], tt.want)
+				t.Errorf("test [%d] received response (%s) but expected (%s)", i, res["STATUS"], tt.want)
 			}
-		}
-
-	}
-}
-
-func TestFormatQueryString(t *testing.T) {
-
-	var tests = []struct {
-		params 	map[string]interface{}
-		want 	string
-	}{
-		{map[string]interface{}{"key1": "val1", "key2": true, "key3": 10}, url.Values{"key1": []string{"val1"}, "key2": []string{"true"}, "key3": []string{"10"}}.Encode()},
-		{map[string]interface{}{"key1": false, "key2": "val-2", "key3": 133}, url.Values{"key1": []string{"false"}, "key2": []string{"val-2"}, "key3": []string{"133"}}.Encode()},
-		{map[string]interface{}{"key1": "#val3", "key2": true, "key3": 0}, url.Values{"key1": []string{"#val3"}, "key2": []string{"true"}, "key3": []string{"0"}}.Encode()},
-	}
-
-	for _, tt := range tests {
-
-		result, err := FormatQueryString(tt.params)
-		if err != nil {
-			t.Errorf(err.Error())
-		}
-
-		if result.Encode() != tt.want {
-			t.Errorf("Expected: %s\nGot: %s\n", result.Encode(), tt.want)
 		}
 	}
 }

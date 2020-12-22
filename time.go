@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strconv"
 	"time"
+
+	"github.com/google/go-querystring/query"
 )
 
 // TimeEntry models an individual time entry.
@@ -26,13 +28,46 @@ type TimeEntryJSON struct {
 	Entry *TimeEntry `json:"time-entry"`
 }
 
-// TimeEntries models an array of time entries.
-type TimeEntries struct {
-	TimeEntries []TimeEntry `json:"time-entries"`
+// TimeEntriesJSON models the parent JSON structure of an array of TimeEntrys and
+// facilitates unmarshalling.
+type TimeEntriesJSON struct {
+	TimeEntries []*TimeEntry `json:"time-entries"`
+}
+
+// TimeQueryParams defines valid query parameters for this resource.
+type TimeQueryParams struct {
+	UserID 		string `url:"userId,omitempty"`
+	FromDate	string `url:"fromdate,omitempty"`
+	ToDate		string `url:"todate,omitempty"`
+}
+
+// FormatQueryParams formats query parameters for this resource.
+func (qp *TimeQueryParams) FormatQueryParams() (string, error) {
+
+	if qp.FromDate != "" {
+		_, err := time.Parse("20060102", qp.FromDate)
+		if err != nil {
+			return "", fmt.Errorf("invalid format for FromDate parameter.  Should be YYYYMMDD, but found %s", qp.FromDate)
+		}
+	}
+
+	if qp.ToDate != "" {
+		_, err := time.Parse("20060102", qp.ToDate)
+		if err != nil {
+			return "", fmt.Errorf("invalid format for ToDate parameter.  Should be YYYYMMDD, but found %s", qp.ToDate)
+		}
+	}
+
+	s, err := query.Values(qp)
+	if err != nil {
+		return "", err
+	}
+
+	return s.Encode(), nil
 }
 
 // GetTimeEntriesByPerson retrieves time entries for a specific Teamwork user, for the specified time period.
-func (conn Connection) GetTimeEntriesByPerson(personID string, from string, to string) (*TimeEntries, error) {
+func (conn Connection) GetTimeEntriesByPerson(personID string, fromDate string, toDate string) ([]*TimeEntry, error) {
 	
 	errBuff := ""
 
@@ -45,48 +80,37 @@ func (conn Connection) GetTimeEntriesByPerson(personID string, from string, to s
 		}
 	}
 
-	if from == "" {
+	if fromDate == "" {
 		if errBuff != "" {
 			errBuff += ", "
 		}
-		errBuff += "from"
+		errBuff += "fromDate"
 	}
 
-	if to == "" {
+	if toDate == "" {
 		if errBuff != "" {
 			errBuff += ", "
 		}
-		errBuff += "to"
+		errBuff += "toDate"
 	}
 
 	if errBuff != "" {
 		return nil, fmt.Errorf("missing required parameter(s): %s", errBuff)
 	}
 
-	queryParams := make(map[string]interface{})
-
-
-	queryParams["userId"] = personID
-	
-	_, err := time.Parse("20060102", from)
-	if err != nil {
-		return nil, fmt.Errorf("invalid format for from parameter.  Should be YYYYMMDD, but found %s", from)
+	queryParams := TimeQueryParams {
+		UserID: personID,
+		FromDate: fromDate,
+		ToDate: toDate,
 	}
-	queryParams["fromdate"] = from
 
-	_, err = time.Parse("20060102", to)
-	if err != nil {
-		return nil, fmt.Errorf("invalid format for to parameter.  Should be YYYYMMDD, but found %s", from)
-	}
-	queryParams["todate"] = to
-
-	data, err := conn.GetRequest("time_entries", queryParams)
+	data, err := conn.GetRequest("time_entries", &queryParams)
 
 	if err != nil {
 		return nil, err
 	}
 
-	t := new(TimeEntries)
+	t := new(TimeEntriesJSON)
 
 	err = json.Unmarshal(data, &t)
 
@@ -94,7 +118,7 @@ func (conn Connection) GetTimeEntriesByPerson(personID string, from string, to s
 		return nil, err
 	}
 
-	return t, nil
+	return t.TimeEntries, nil
 }
 
 // PostTimeEntry posts an individual time entry to the specified task.  The time
@@ -165,11 +189,11 @@ func (conn *Connection) PostTimeEntry(entry *TimeEntry) (string, error) {
 }
 
 // SumHours returns the total hours for a specified user found in the TimeEntries array.
-func (e *TimeEntries) SumHours(personID string) (float64, error) {
+func SumHours(e []*TimeEntry, personID string) (float64, error) {
 	found := false
 	hours := 0.0
 
-	for _, v := range e.TimeEntries {
+	for _, v := range e {
 		if v.PersonID == personID {
 			h, err := strconv.ParseFloat(v.Hours, 64)
 			if err != nil {

@@ -69,11 +69,11 @@ func TestGetTimeEntriesByPerson(t *testing.T) {
 				t.Errorf(err.Error())
 			}
 
-			if len(entries.TimeEntries) < 1 {
+			if len(entries) < 1 {
 				t.Errorf("No time entries for person %s, from %s to %s.", p, tp["fromdate"], tp["todate"])
 			}
 
-			for _, entry := range entries.TimeEntries {
+			for _, entry := range entries {
 
 				if entry.PersonID != p {
 					t.Errorf("Found user ID (%s) but expected only (%s)", entry.PersonID, p)
@@ -100,7 +100,7 @@ func TestGetTimeEntriesByPerson(t *testing.T) {
 	}{
 		{"", "20201012", "20201013", "missing required parameter(s): personID"},
 		{"abc", "", "", "strconv.Atoi: parsing \"abc\": invalid syntax"},
-		{"12345", "10-12-2020", "20201013", "invalid format for from parameter.  Should be YYYYMMDD, but found 10-12-2020"},
+		{"12345", "10-12-2020", "20201013", "invalid format for FromDate parameter.  Should be YYYYMMDD, but found 10-12-2020"},
 	}
 
 	for _, v := range tests {
@@ -182,7 +182,7 @@ func TestSumHours(t *testing.T) {
 				t.Errorf(err.Error())
 			}
 
-			hours, err := entries.SumHours(p)
+			hours, err := SumHours(entries, p)
 
 			if err != nil {
 				t.Errorf(err.Error())

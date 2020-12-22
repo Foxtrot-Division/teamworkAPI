@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
+
+	"github.com/google/go-querystring/query"
 )
 
 // Person models an individual Teamwork user.
@@ -20,9 +22,17 @@ type PersonJSON struct {
 	Person *Person `json:"person"`
 }
 
-// People models an array of individual users.
-type People struct {
-	People []Person `json:"people"`
+// PeopleJSON models the parent JSON structure of an array of Persons and
+// facilitates unmarshalling.
+type PeopleJSON struct {
+	People []*Person `json:"people"`
+}
+
+// PeopleQueryParams defines valid query parameters for this resource.
+type PeopleQueryParams struct {
+	ProjectID 	 	 string `url:"projectId,omitempty"`
+	UserID	   	 	 string `url:"userIds,omitempty"`
+	CompanyID  		 string `url:"companyId,omitempty"`
 }
 
 // Company models an individual company on Teamwork.
@@ -31,40 +41,49 @@ type Company struct {
 	Name string `json:"name"`
 }
 
-// Companies models an array of individual companies.
-type Companies struct {
-	Companies []Company `json:"companies"`
+// CompaniesJSON models the parent JSON structure of an array of Companys and
+// facilitates unmarshalling.
+type CompaniesJSON struct {
+	Companies []*Company `json:"companies"`
 }
 
-// GetPeopleByCompany retrieves all people from the company specified by companyID.  If companyID is empty string, all people will be returned.
-func (conn Connection) GetPeopleByCompany(companyID string) (*People, error) {
-	var endpoint = ""
+// FormatQueryParams formats query parameters for this resource.
+func (qp PeopleQueryParams) FormatQueryParams() (string, error) {
 
-	if companyID != "" {
-		endpoint = "companies/" + companyID + "/people"
-	} else {
-		endpoint = "people"
-	}
-
-	data, err := conn.GetRequest(endpoint, nil)
-
+	params, err := query.Values(qp)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
-	p := new(People)
+	return params.Encode(), nil
+}
 
-	err = json.Unmarshal(data, &p)
-
+// GetPeopleByCompany retrieves all people from the company specified by companyID.
+func (conn *Connection) GetPeopleByCompany(companyID string) ([]*Person, error) {
+	
+	_, err := strconv.Atoi(companyID)
 	if err != nil {
-		return nil, err
+		if companyID == "" {
+			return nil, fmt.Errorf("missing required parameter(s): companyID")
+		}
+		return nil, fmt.Errorf("invalid value (%s) for companyID", companyID)
 	}
 
-	return p, nil
+	qp := PeopleQueryParams {
+		CompanyID: companyID,
+	}
+
+	data, err := conn.GetPeople(qp)
+
+	if len(data) < 1 {
+		return nil, fmt.Errorf("failed to retrieve any users for companyID (%s)", companyID)
+	}
+
+	return data, nil
 }
 
 // GetPersonByID retrieves a specific person based on ID. 
-func (conn Connection) GetPersonByID(ID string) (*Person, error) {
+func (conn *Connection) GetPersonByID(ID string) (*Person, error) {
 
 	_, err := strconv.Atoi(ID)
 	if err != nil {
@@ -74,31 +93,39 @@ func (conn Connection) GetPersonByID(ID string) (*Person, error) {
 		return nil, fmt.Errorf("invalid value (%s) for ID", ID)
 	}
 
-	endpoint := "people/" + ID
-
-	data, err := conn.GetRequest(endpoint, nil)
-
-	if err != nil {
-		return nil, err
+	qp := PeopleQueryParams {
+		UserID: ID,
 	}
 
-	p := new(PersonJSON)
+	data, err := conn.GetPeople(qp)
 
-	err = json.Unmarshal(data, &p)
-
-	if err != nil {
-		return nil, err
-	}
-
-	if p.Person == nil {
+	if len(data) != 1 {
 		return nil, fmt.Errorf("failed to retrieve user with ID (%s)", ID)
 	}
 
-	return p.Person, nil
+	return data[0], nil
+}
+
+// GetPeople retrieves people based on query parameters.
+func (conn *Connection) GetPeople(queryParams PeopleQueryParams) ([]*Person, error) {
+	
+	data, err := conn.GetRequest("people", queryParams)
+	if err != nil {
+		return nil, err
+	}
+
+	people := new(PeopleJSON)
+
+	err = json.Unmarshal(data, &people)
+	if err != nil {
+		return nil, err
+	}
+	
+	return people.People, nil
 }
 
 // GetCompanies retrieves all companies from Teamwork.
-func (conn Connection) GetCompanies() (*Companies, error) {
+func (conn *Connection) GetCompanies() ([]*Company, error) {
 
 	data, err := conn.GetRequest("companies", nil)
 
@@ -106,7 +133,7 @@ func (conn Connection) GetCompanies() (*Companies, error) {
 		return nil, err
 	}
 
-	c := new(Companies)
+	c := new(CompaniesJSON)
 
 	err = json.Unmarshal(data, &c)
 
@@ -114,5 +141,5 @@ func (conn Connection) GetCompanies() (*Companies, error) {
 		return nil, err
 	}
 
-	return c, nil
+	return c.Companies, nil
 }

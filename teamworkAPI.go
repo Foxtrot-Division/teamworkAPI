@@ -8,11 +8,15 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
-	"net/url"
 	"os"
 )
+
+// QueryParams is a generic interface to be implemented by a resource (e.g.
+// Projects, Tasks, People, etc.) to format url query parameters.
+type QueryParams interface {
+	FormatQueryParams() (string, error)
+}
 
 // Connection stores info needed to establish Teamwork API Connection
 type Connection struct {
@@ -20,6 +24,7 @@ type Connection struct {
 	SiteName       string `json:"siteName"`
 	DataPreference string `json:"dataPreference"`
 	URL            string
+	RequestURL	   string
 }
 
 // NewConnection initializes a new instance used to generate Teamwork API calls.
@@ -99,7 +104,7 @@ func NewConnectionFromJSON(pathToJSONFile string) (*Connection, error) {
 }
 
 // GetRequest performs a HTTP GET on the desired endpoint, with the specific query parameters.
-func (conn Connection) GetRequest(endpoint string, params map[string]interface{}) ([]byte, error) {
+func (conn *Connection) GetRequest(endpoint string, params QueryParams) ([]byte, error) {
 	
 	if endpoint == "" {
 		return nil, fmt.Errorf("missing required parameter(s): endpoint")
@@ -112,15 +117,17 @@ func (conn Connection) GetRequest(endpoint string, params map[string]interface{}
 	var err error
 
 	if params != nil {
-		query, err := FormatQueryString(params)
+		s, err := params.FormatQueryParams()
 		if err != nil {
 			return nil, err
 		}
 
-		queryParams += "?" + query.Encode()
+		queryParams += "?" + s
 	}
 
-	req, err := http.NewRequest("GET", conn.URL+endpoint+"."+conn.DataPreference+queryParams, nil)
+	conn.RequestURL = conn.URL + endpoint + "." + conn.DataPreference + queryParams
+	
+	req, err := http.NewRequest("GET", conn.RequestURL, nil)
 
 	req.Header.Add("Authorization", "Basic "+basicAuth(conn.APIKey))
 
@@ -157,31 +164,6 @@ func (conn *Connection) PostRequest(endpoint string, data []byte) ([]byte, error
 	}
 
 	return body, nil
-}
-
-// FormatQueryString generates a http query string from the supplied map containing request parameters.
-func FormatQueryString(params map[string]interface{}) (url.Values, error) {
-
-	queryString := url.Values{}
-	if params != nil {
-		for key, value := range params {
-			switch value.(type) {
-			case string:
-				queryString.Add(key, fmt.Sprintf("%s", value))
-
-			case int:
-				queryString.Add(key, fmt.Sprintf("%d", value))
-
-			case bool:
-				queryString.Add(key, fmt.Sprintf("%t", value))
-
-			default:
-				log.Printf("Unsupported type (%T) for %s.\n", value, key)
-			}
-		}
-	}
-
-	return queryString, nil
 }
 
 func basicAuth(apiKey string) string {
