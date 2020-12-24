@@ -34,11 +34,38 @@ type TimeEntriesJSON struct {
 	TimeEntries []*TimeEntry `json:"time-entries"`
 }
 
+// TimeResponseHandler models a http response for a TimeEntry operation.
+type TimeResponseHandler struct {
+	Status 		string `json:"STATUS"`
+	Message  	string `json:"MESSAGE"`
+	TimeEntryID string `json:"timeLogId"`
+}
+
 // TimeQueryParams defines valid query parameters for this resource.
 type TimeQueryParams struct {
 	UserID 		string `url:"userId,omitempty"`
 	FromDate	string `url:"fromdate,omitempty"`
 	ToDate		string `url:"todate,omitempty"`
+}
+
+// ParseResponse interprets a http response for a TimeEntry operation such as
+// POST, PUT, UPDATE
+func (resMsg *TimeResponseHandler) ParseResponse(rawRes []byte) (error) {
+	
+	err := json.Unmarshal(rawRes, &resMsg)
+	if err != nil {
+		return err
+	}
+
+	if resMsg.Status == "Error" {
+		return fmt.Errorf(resMsg.Message)
+	}
+
+	if resMsg.TimeEntryID == "" {
+		return fmt.Errorf("no ID returned for time entry POST")
+	}
+
+	return nil
 }
 
 // FormatQueryParams formats query parameters for this resource.
@@ -155,37 +182,21 @@ func (conn *Connection) PostTimeEntry(entry *TimeEntry) (string, error) {
 
 	endpoint := "tasks/" + entry.TaskID + "/time_entries"
 
-	var status struct {
-		Status string `json:"STATUS"`
-		ID     string `json:"timeLogId"`
-	}
-
 	data, err := json.Marshal(timeEntryJSON)
 	if err != nil {
 		return "", err
 	}
 
-	res, err := conn.PostRequest(endpoint, data)
+	handler := new(TimeResponseHandler)
+
+	err = conn.PostRequest(endpoint, data, handler)
 	if err != nil {
 		return "", err
 	}
 
-	err = json.Unmarshal(res, &status)
-	if err != nil {
-		return "", err
-	}
+	entry.ID = handler.TimeEntryID
 
-	if status.Status != "OK" {
-		return status.Status, fmt.Errorf("received error response (%s)", status.Status)
-	}
-
-	if status.ID == "" {
-		return "", fmt.Errorf("no id returned for time log")
-	}
-
-	entry.ID = status.ID
-
-	return status.ID, nil
+	return handler.TimeEntryID, nil
 }
 
 // SumHours returns the total hours for a specified user found in the TimeEntries array.

@@ -130,7 +130,7 @@ func TestPostTimeEntry(t *testing.T) {
 		error		bool
 		want		string
 	}{
-		{"118616", "Test entry.", "0", "60", "20201209", "false", "20029437", false, ""},
+		{"118616", "Test entry 2.", "0", "60", "20201209", "false", "20029437", false, ""},
 		{"", "Test entry.", "0", "0", "", "true", "", true, "time entry is missing required field(s): PersonID, TaskID, Date"},
 	}
 
