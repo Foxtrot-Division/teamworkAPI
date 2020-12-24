@@ -58,7 +58,7 @@ func (resMsg *TimeResponseHandler) ParseResponse(rawRes []byte) (error) {
 	}
 
 	if resMsg.Status == "Error" {
-		return fmt.Errorf(resMsg.Message)
+		return fmt.Errorf("received ERROR response: %s", resMsg.Message)
 	}
 
 	if resMsg.TimeEntryID == "" {
