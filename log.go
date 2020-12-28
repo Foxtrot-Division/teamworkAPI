@@ -42,17 +42,13 @@ func LoadLogConfig(path string) (*LogConfig, error) {
 	return l, nil
 }
 
-func init() {
-
-	conf, err := LoadLogConfig("./testdata/conf.json")
-	if err != nil {
-		panic("failed to load log configuration")
-	}
+// InitLog initializes logrus instance based on conf parameters.
+func InitLog(conf *LogConfig) (error) {
 
 	if conf.LogToFile {
 		f, err := os.OpenFile(conf.LogFilePath, os.O_WRONLY | os.O_APPEND | os.O_CREATE, 0644)
 		if err != nil {
-			panic("failed to open log file")
+			return fmt.Errorf("failed to open log file (%s)", conf.LogFilePath)
 		}
 
 		mw := io.MultiWriter(os.Stdout, f)
@@ -68,4 +64,6 @@ func init() {
 		FullTimestamp:   true,
 		TimestampFormat: time.RFC822,
 	})
+
+	return nil
 }
