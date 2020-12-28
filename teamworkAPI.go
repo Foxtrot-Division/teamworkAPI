@@ -10,6 +10,8 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+
+	log "github.com/sirupsen/logrus"
 )
 
 // QueryParams is a generic interface to be implemented by a resource (e.g.
@@ -21,18 +23,18 @@ type QueryParams interface {
 // ResponseHandler is a generic interface to be implemented by a resource (e.g.
 // Projects, Tasks, People, etc.) to properly interpret a http response.
 type ResponseHandler interface {
-	ParseResponse([]byte) (error) 
+	ParseResponse(string, []byte) (error) 
 }
 
 // GeneralResponse implements the ResponseHandler interface to interpret a
 // general response that includes a Status and optionally, a Message
 type GeneralResponse struct {
-	Status string `json:"STATUS"`
+	Status 	string `json:"STATUS"`
 	Message string `json:"MESSAGE"`
 }
 
 // ParseResponse interprets a general http response for a POST, PUT, UPDATE, etc.
-func (resMsg *GeneralResponse) ParseResponse(rawRes []byte) (error) {
+func (resMsg *GeneralResponse) ParseResponse(httpMethod string, rawRes []byte) (error) {
 
 	err := json.Unmarshal(rawRes, &resMsg)
 	if err != nil {
@@ -96,7 +98,8 @@ func NewConnectionFromJSON(pathToJSONFile string) (*Connection, error) {
 	defer f.Close()
 	
 	if err != nil {
-		return nil, errors.New("Failed to open JSON file at " + pathToJSONFile)
+		log.Debug(err)
+		return nil, errors.New("failed to open JSON file at " + pathToJSONFile)
 	}
 
 	byteValue, _ := ioutil.ReadAll(f)
@@ -173,7 +176,7 @@ func (conn *Connection) GetRequest(endpoint string, params QueryParams) ([]byte,
 }
 
 // PostRequest submits a POST request to Teamwork API.  The ResponseHandler is
-// used to properly interpret the http response and store the response content
+// used to properly interpret the http response and store the response content ([]byte)
 // for further processing.  If ResponseHandler is nil, the
 // GeneralResponse will be used.
 func (conn *Connection) PostRequest(endpoint string, data []byte, resHandler ResponseHandler) (error) {
@@ -197,7 +200,41 @@ func (conn *Connection) PostRequest(endpoint string, data []byte, resHandler Res
 		resHandler = new(GeneralResponse)
 	}
 
-	err = resHandler.ParseResponse(body)
+	err = resHandler.ParseResponse(http.MethodPost, body)
+
+	return err
+}
+
+// DeleteRequest submits a DELETE request to Teamwork API.  The ResponseHandler is
+// used to properly interpret the http response and store the response content ([]byte)
+// for further processing.  If ResponseHandler is nil, the
+// GeneralResponse will be used.
+func (conn *Connection) DeleteRequest(endpoint string, resHandler ResponseHandler) (error) {
+
+	if endpoint == "" {
+		return fmt.Errorf("missing required parameter(s): endpoint")
+	}
+
+	client := &http.Client{}
+		
+	conn.RequestURL = conn.URL + endpoint + "." + conn.DataPreference
+		
+	req, err := http.NewRequest("DELETE", conn.RequestURL, nil)
+	req.Header.Add("Authorization", "Basic "+basicAuth(conn.APIKey))
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+
+	data, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+
+	if resHandler == nil {
+		resHandler = new(GeneralResponse)
+	}
+	err = resHandler.ParseResponse(http.MethodDelete, data)
 
 	return err
 }

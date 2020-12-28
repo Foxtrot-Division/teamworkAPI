@@ -2,15 +2,18 @@ package teamworkapi
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"os"
+	"strconv"
 	"testing"
 	"time"
 )
 
 type TimeTestData struct {
 	People      []string            `json:"people"`
-	TimePeriods []map[string]string `json:"time-periods"`
+	TaskID		string				`json:"taskID"`
+	TimePeriods []map[string]string `json:"timePeriods"`
 }
 
 func initTimeTestConnection(t *testing.T) *Connection {
@@ -119,34 +122,37 @@ func TestPostTimeEntry(t *testing.T) {
 	
 	conn := initTimeTestConnection(t)
 
-	var tests = []struct {
-		personID 	string
-		description string
-		hours 		string
-		minutes		string
-		date		string
-		isBillable  string
-		taskID 		string
-		error		bool
-		want		string
-	}{
-		{"118616", "Test entry 2.", "10", "", "20201222", "false", "20029437", false, ""},
-		{"", "Test entry.", "0", "0", "", "true", "", true, "time entry is missing required field(s): PersonID, TaskID, Date"},
+	testData := initTimeTestData(t)
+
+	type testCase struct {
+		entry *TimeEntry
+		error bool
+		want  string
 	}
 
-	for _, v := range tests {
+	tests := make([]testCase, len(testData.People))
 
-		entry := &TimeEntry{
-			PersonID: v.personID,
-			Description: v.description,
-			Hours: v.hours,
-			Minutes: v.minutes,
-			Date: v.date,
-			IsBillable: v.isBillable,
-			TaskID: v.taskID,
+	for i, v := range testData.People {
+		tests[i].entry = &TimeEntry{
+			PersonID: v,
+			Description: fmt.Sprintf("test entry %d", i),
+			Hours: strconv.Itoa(5 + i),
+			Minutes: "0",
+			Date: time.Now().Format("20060102"),
+			IsBillable: "false",
+			TaskID: testData.TaskID,
 		}
+		tests[i].error = false
+		tests[i].want = ""
+	}
+
+	tests = append(tests, 
+		testCase {entry: &TimeEntry {PersonID:"", Hours:"0", Minutes:"10",Date:"20201201", TaskID:""}, error: true, want: "time entry is missing required field(s): PersonID, TaskID"},
+		testCase {entry: &TimeEntry {PersonID:testData.People[0], Hours:"0", Minutes:"10",Date:"20201201", TaskID:"123456"}, error: true, want: "received ERROR response: Not Found"})
+
+	for _, v := range tests {
 		
-		res, err := conn.PostTimeEntry(entry)
+		res, err := conn.PostTimeEntry(v.entry)
 
 		if err != nil {
 			if !v.error {
@@ -160,9 +166,61 @@ func TestPostTimeEntry(t *testing.T) {
 			if v.error {
 				t.Errorf("expected error")
 			} else {
-				if entry.ID != res {
-					t.Errorf("ID (%s) not set to expected value (%s)", entry.ID, res)
+				if v.entry.ID != res {
+					t.Errorf("ID (%s) not set to expected value (%s)", v.entry.ID, res)
 				}
+			}
+		}
+	}		
+}
+
+func TestDeleteTimeEntry(t *testing.T) {
+
+	conn := initTimeTestConnection(t)
+
+	testData := initTimeTestData(t)
+
+	testEntry := &TimeEntry {
+		PersonID: testData.People[0],
+		Description: fmt.Sprintf("test entry - DELETE"),
+		Hours: "5",
+		Minutes: "0",
+		Date: time.Now().Format("20060102"),
+		IsBillable: "false",
+		TaskID: testData.TaskID,
+	}
+
+	id, err := conn.PostTimeEntry(testEntry)
+	if err != nil {
+		t.Errorf(err.Error())
+	}
+
+	tests := []struct {
+		ID 		string
+		error 	bool
+		want 	string
+	}{
+		{id, false, ""},
+		{"", true, "missing required parameter: ID"},
+		{"12345", true, "received ERROR response: Forbidden"},
+		{"abc!def", true, "received ERROR response: Bad Request"},
+	}
+
+	for _, v := range tests {
+		
+		err := conn.DeleteTimeEntry(v.ID)
+
+		if err != nil {
+			if !v.error {
+				t.Errorf(err.Error())
+			} else {
+				if err.Error() != v.want {
+					t.Errorf("expected error (%s) but got (%s)", v.want, err.Error())
+				}
+			}
+		} else {
+			if v.error {
+				t.Errorf("expected error but got none")
 			}
 		}
 	}		

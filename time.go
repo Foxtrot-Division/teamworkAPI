@@ -3,6 +3,7 @@ package teamworkapi
 import (
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"strconv"
 	"time"
 
@@ -50,7 +51,7 @@ type TimeQueryParams struct {
 
 // ParseResponse interprets a http response for a TimeEntry operation such as
 // POST, PUT, UPDATE
-func (resMsg *TimeResponseHandler) ParseResponse(rawRes []byte) (error) {
+func (resMsg *TimeResponseHandler) ParseResponse(httpMethod string, rawRes []byte) (error) {
 	
 	err := json.Unmarshal(rawRes, &resMsg)
 	if err != nil {
@@ -61,8 +62,11 @@ func (resMsg *TimeResponseHandler) ParseResponse(rawRes []byte) (error) {
 		return fmt.Errorf("received ERROR response: %s", resMsg.Message)
 	}
 
-	if resMsg.TimeEntryID == "" {
-		return fmt.Errorf("no ID returned for time entry POST")
+	switch httpMethod {
+		case http.MethodPost:
+			if resMsg.TimeEntryID == "" {
+				return fmt.Errorf("no ID returned for time entry POST")
+			}
 	}
 
 	return nil
@@ -197,6 +201,25 @@ func (conn *Connection) PostTimeEntry(entry *TimeEntry) (string, error) {
 	entry.ID = handler.TimeEntryID
 
 	return handler.TimeEntryID, nil
+}
+
+// DeleteTimeEntry deletes a time entry with the specified ID.
+func (conn *Connection) DeleteTimeEntry(ID string) (error) {
+
+	if ID == "" {
+		return fmt.Errorf("missing required parameter: ID")
+	}
+
+	endpoint := "time_entries/" + ID
+
+	handler := new(TimeResponseHandler)
+
+	err := conn.DeleteRequest(endpoint, handler)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // SumHours returns the total hours for a specified user found in the TimeEntries array.
