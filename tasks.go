@@ -21,7 +21,7 @@ type Task struct {
 	DueDate        string `json:"due-date"`
 	CreatedOn      string `json:"created-on"`
 	CompletedOn    string `json:"completed_on"`
-	EstimatedMin   int    `json:"estimates-minutes"`
+	EstimatedMin   int    `json:"estimated-minutes"`
 	Priority       string `json:"priority"`
 	AssignedUserID string `json:"responsible-party-id"`
 	Tags           []Tag  `json:"tags"`
