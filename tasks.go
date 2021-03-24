@@ -11,19 +11,20 @@ import (
 
 // Task models a specific task in Teamwork.
 type Task struct {
-	ID				int 	`json:"id"`
-	Title			string 	`json:"content"`
-	Description		string 	`json:"description"`
-	ProjectID		int 	`json:"project-id"` 
-	TaskListID		int 	`json:"todo-list-id"`
-	Status			string 	`json:"status"`
-	CompanyID		int 	`json:"company-id"`
-	DueDate			string 	`json:"due-date"`
-	CreatedOn		string 	`json:"created-on"`
-	EstimatedMin	int 	`json:"estimates-minutes"`
-	Priority		string 	`json:"priority"`
-	AssignedUserID	string 	`json:"responsible-party-id"`
-	Tags			[]Tag	`json:"tags"`
+	ID             int    `json:"id"`
+	Title          string `json:"content"`
+	Description    string `json:"description"`
+	ProjectID      int    `json:"project-id"`
+	TaskListID     int    `json:"todo-list-id"`
+	Status         string `json:"status"`
+	CompanyID      int    `json:"company-id"`
+	DueDate        string `json:"due-date"`
+	CreatedOn      string `json:"created-on"`
+	CompletedOn    string `json:"completed_on"`
+	EstimatedMin   int    `json:"estimates-minutes"`
+	Priority       string `json:"priority"`
+	AssignedUserID string `json:"responsible-party-id"`
+	Tags           []Tag  `json:"tags"`
 }
 
 // TaskJSON models the parent JSON structure of an individual task and
@@ -40,11 +41,11 @@ type TasksJSON struct {
 
 // TaskQueryParams defines valid query parameters for this resource.
 type TaskQueryParams struct {
-	AssignedUserID 	 string `url:"responsible-party-ids,omitempty"`
-	FromDate	   	 string `url:"startDate,omitempty"`
-	ToDate			 string `url:"endDate,omitempty"`
-	IncludeCompleted bool  	`url:"includeCompletedTasks,omitempty"`
-	Include			 string `url:"include,omitempty"`
+	AssignedUserID   string `url:"responsible-party-ids,omitempty"`
+	FromDate         string `url:"startDate,omitempty"`
+	ToDate           string `url:"endDate,omitempty"`
+	IncludeCompleted bool   `url:"includeCompletedTasks,omitempty"`
+	Include          string `url:"include,omitempty"`
 }
 
 // FormatQueryParams formats query parameters for this resource.
@@ -72,7 +73,7 @@ func (qp TaskQueryParams) FormatQueryParams() (string, error) {
 	return params.Encode(), nil
 }
 
-// GetTaskByID retrieves a specific task based on ID. 
+// GetTaskByID retrieves a specific task based on ID.
 func (conn *Connection) GetTaskByID(ID string) (*Task, error) {
 
 	_, err := strconv.Atoi(ID)
@@ -108,7 +109,7 @@ func (conn *Connection) GetTaskByID(ID string) (*Task, error) {
 
 // GetTasks returns an array of tasks based on one or more query parameters.
 func (conn *Connection) GetTasks(queryParams TaskQueryParams) ([]*Task, error) {
-	
+
 	data, err := conn.GetRequest("tasks", queryParams)
 	if err != nil {
 		return nil, err
@@ -120,8 +121,6 @@ func (conn *Connection) GetTasks(queryParams TaskQueryParams) ([]*Task, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	return tasks.Tasks, nil
 }
-
-
