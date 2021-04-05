@@ -8,7 +8,6 @@ import (
 	"reflect"
 	"strconv"
 	"testing"
-	"fmt"
 )
 
 type taskTestData struct {
