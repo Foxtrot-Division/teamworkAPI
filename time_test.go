@@ -45,6 +45,29 @@ func initTimeTestData(t *testing.T) *TimeTestData {
 	return testData
 }
 
+func TestGetTimeEntriesByTask(t *testing.T) {
+
+	conn := initTimeTestConnection(t)
+
+	var tests = []struct {
+		ID 		string
+		want	int
+	}{
+		{"21603507", 14},
+	}
+
+	for _, v := range tests {
+		entries, err := conn.GetTimeEntriesByTask(v.ID)
+		if err != nil {
+			t.Errorf(err.Error())
+			
+		}
+		if len(entries) != v.want {
+			t.Errorf("expected %d time entries for task %s but got %d", v.want, v.ID, len(entries))
+		}
+	}
+}
+
 func TestGetTimeEntriesByPerson(t *testing.T) {
 
 	conn := initTimeTestConnection(t)

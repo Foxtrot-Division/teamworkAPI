@@ -97,6 +97,36 @@ func (qp *TimeQueryParams) FormatQueryParams() (string, error) {
 	return s.Encode(), nil
 }
 
+// GetTimeEntriesByTask retrieves all time entries for the specified Task.
+func (conn *Connection) GetTimeEntriesByTask(ID string) ([]*TimeEntry, error) {
+
+	_, err := strconv.Atoi(ID)
+	if err != nil {
+		if ID == "" {
+			return nil, fmt.Errorf("missing required parameter(s): ID")
+		}
+		return nil, fmt.Errorf("invalid value (%s) for ID", ID)
+	}
+
+	endpoint := fmt.Sprintf("tasks/%s/time_entries", ID)
+
+	data, err := conn.GetRequest(endpoint, nil)
+
+	if err != nil {
+		return nil, err
+	}
+
+	t := new(TimeEntriesJSON)
+
+	err = json.Unmarshal(data, &t)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return t.TimeEntries, nil
+}
+
 // GetTimeEntriesByPerson retrieves time entries for a specific Teamwork user, for the specified time period.
 func (conn Connection) GetTimeEntriesByPerson(personID string, fromDate string, toDate string) ([]*TimeEntry, error) {
 	
