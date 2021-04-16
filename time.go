@@ -3,6 +3,7 @@ package teamworkapi
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"net/http"
 	"strconv"
 	"time"
@@ -12,15 +13,15 @@ import (
 
 // TimeEntry models an individual time entry.
 type TimeEntry struct {
-	ID          string   `json:"id"`
-	PersonID    string   `json:"person-id"`
-	Description string   `json:"description"`
-	Hours       string   `json:"hours"`
-	Minutes     string   `json:"minutes"`
-	Date        string   `json:"date"`			// expected format is YYYYMMDD
-	IsBillable  string   `json:"isbillable"`
-	ProjectID   string   `json:"project-id"`
-	TaskID      string   `json:"todo-item-id"`
+	ID          string `json:"id"`
+	PersonID    string `json:"person-id"`
+	Description string `json:"description"`
+	Hours       string `json:"hours"`
+	Minutes     string `json:"minutes"`
+	Date        string `json:"date"` // expected format is YYYYMMDD
+	IsBillable  string `json:"isbillable"`
+	ProjectID   string `json:"project-id"`
+	TaskID      string `json:"todo-item-id"`
 }
 
 // TimeEntryJSON provides a wrapper around TimeEntry to properly marshal json
@@ -37,22 +38,23 @@ type TimeEntriesJSON struct {
 
 // TimeResponseHandler models a http response for a TimeEntry operation.
 type TimeResponseHandler struct {
-	Status 		string `json:"STATUS"`
-	Message  	string `json:"MESSAGE"`
+	Status      string `json:"STATUS"`
+	Message     string `json:"MESSAGE"`
 	TimeEntryID string `json:"timeLogId"`
 }
 
 // TimeQueryParams defines valid query parameters for this resource.
 type TimeQueryParams struct {
-	UserID 		string `url:"userId,omitempty"`
-	FromDate	string `url:"fromdate,omitempty"`
-	ToDate		string `url:"todate,omitempty"`
+	UserID   string `url:"userId,omitempty"`
+	FromDate string `url:"fromdate,omitempty"`
+	ToDate   string `url:"todate,omitempty"`
+	PageSize string `url:"pageSize,omitempty"`
 }
 
 // ParseResponse interprets a http response for a TimeEntry operation such as
 // POST, PUT, UPDATE
-func (resMsg *TimeResponseHandler) ParseResponse(httpMethod string, rawRes []byte) (error) {
-	
+func (resMsg *TimeResponseHandler) ParseResponse(httpMethod string, rawRes []byte) error {
+
 	err := json.Unmarshal(rawRes, &resMsg)
 	if err != nil {
 		return err
@@ -63,10 +65,10 @@ func (resMsg *TimeResponseHandler) ParseResponse(httpMethod string, rawRes []byt
 	}
 
 	switch httpMethod {
-		case http.MethodPost:
-			if resMsg.TimeEntryID == "" {
-				return fmt.Errorf("no ID returned for time entry POST")
-			}
+	case http.MethodPost:
+		if resMsg.TimeEntryID == "" {
+			return fmt.Errorf("no ID returned for time entry POST")
+		}
 	}
 
 	return nil
@@ -95,6 +97,21 @@ func (qp *TimeQueryParams) FormatQueryParams() (string, error) {
 	}
 
 	return s.Encode(), nil
+}
+
+// GetTimeEntries retrieve time entries specified by queryParams.
+func (conn *Connection) GetTimeEntries(queryParams *TimeQueryParams) ([]*TimeEntry, error) {
+
+	data, err := conn.GetRequest("time_entries", queryParams)
+	if err != nil {
+		return nil, err
+	}
+	entries := new(TimeEntriesJSON)
+	err = json.Unmarshal(data, &entries)
+	if err != nil {
+		return nil, err
+	}
+	return entries.TimeEntries, nil
 }
 
 // GetTimeEntriesByTask retrieves all time entries for the specified Task.
@@ -129,7 +146,7 @@ func (conn *Connection) GetTimeEntriesByTask(ID string) ([]*TimeEntry, error) {
 
 // GetTimeEntriesByPerson retrieves time entries for a specific Teamwork user, for the specified time period.
 func (conn Connection) GetTimeEntriesByPerson(personID string, fromDate string, toDate string) ([]*TimeEntry, error) {
-	
+
 	errBuff := ""
 
 	if personID == "" {
@@ -159,27 +176,13 @@ func (conn Connection) GetTimeEntriesByPerson(personID string, fromDate string, 
 		return nil, fmt.Errorf("missing required parameter(s): %s", errBuff)
 	}
 
-	queryParams := TimeQueryParams {
-		UserID: personID,
+	queryParams := TimeQueryParams{
+		UserID:   personID,
 		FromDate: fromDate,
-		ToDate: toDate,
+		ToDate:   toDate,
 	}
 
-	data, err := conn.GetRequest("time_entries", &queryParams)
-
-	if err != nil {
-		return nil, err
-	}
-
-	t := new(TimeEntriesJSON)
-
-	err = json.Unmarshal(data, &t)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return t.TimeEntries, nil
+	return conn.GetTimeEntries(&queryParams)
 }
 
 // PostTimeEntry posts an individual time entry to the specified task.  The time
@@ -234,7 +237,7 @@ func (conn *Connection) PostTimeEntry(entry *TimeEntry) (string, error) {
 }
 
 // DeleteTimeEntry deletes a time entry with the specified ID.
-func (conn *Connection) DeleteTimeEntry(ID string) (error) {
+func (conn *Connection) DeleteTimeEntry(ID string) error {
 
 	if ID == "" {
 		return fmt.Errorf("missing required parameter: ID")
@@ -252,35 +255,33 @@ func (conn *Connection) DeleteTimeEntry(ID string) (error) {
 	return nil
 }
 
-// SumHours returns the total hours for a specified user found in the TimeEntries array.
-func SumHours(e []*TimeEntry, personID string) (float64, error) {
-	found := false
+// TotalAndAvgHours returns the total and avg hours found in the TimeEntries array.
+func TotalAndAvgHours(e []*TimeEntry) (map[string]float64, error) {
 	hours := 0.0
 
+	retVal := make(map[string]float64, 2)
+	retVal["total"] = 0.0
+	retVal["avg"] = 0.0
+
 	for _, v := range e {
-		if v.PersonID == personID {
-			h, err := strconv.ParseFloat(v.Hours, 64)
+		h, err := strconv.ParseFloat(v.Hours, 64)
+		if err != nil {
+			return nil, fmt.Errorf("failed to convert %s to float64", v.Hours)
+		}
+
+		hours += h
+
+		if v.Minutes != "0" {
+			m, err := strconv.ParseFloat(v.Minutes, 64)
 			if err != nil {
-				return 0, fmt.Errorf("failed to convert %s to float64", v.Hours)
+				return nil, fmt.Errorf("failed to convert %s to float64", v.Minutes)
 			}
-
-			found = true
-			hours += h
-
-			if v.Minutes != "0" {
-				m, err := strconv.ParseFloat(v.Minutes, 64)
-				if err != nil {
-					return 0, fmt.Errorf("failed to convert %s to float64", v.Minutes)
-				}
-
-				hours += m / 60
-			}
+			hours += m / 60
 		}
 	}
 
-	if !found {
-		return 0, fmt.Errorf("user ID %s not found in response data", personID)
-	}
+	retVal["total"] = math.Round(hours*100) / 100
+	retVal["avg"] = math.Round(hours/float64(len(e))*100) / 100
 
-	return hours, nil
+	return retVal, nil
 }

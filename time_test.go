@@ -12,7 +12,7 @@ import (
 
 type TimeTestData struct {
 	People      []string            `json:"people"`
-	TaskID		string				`json:"taskID"`
+	TaskID      string              `json:"taskID"`
 	TimePeriods []map[string]string `json:"timePeriods"`
 }
 
@@ -45,13 +45,36 @@ func initTimeTestData(t *testing.T) *TimeTestData {
 	return testData
 }
 
+func TestGetTimeEntries(t *testing.T) {
+
+	conn := initTimeTestConnection(t)
+
+	var tests = []struct {
+		queryParams   *TimeQueryParams
+		want int
+	}{
+		{&TimeQueryParams{FromDate: "20210101", ToDate: "20210228", PageSize: "500"}, 218},
+		{&TimeQueryParams{FromDate: "20210304", ToDate: "20210304"}, 4},
+	}
+
+	for _, v := range tests {
+		entries, err := conn.GetTimeEntries(v.queryParams)
+		if err != nil {
+			t.Errorf(err.Error())
+		}
+		if len(entries) != v.want {
+			t.Errorf("expected %d time entries but got %d", v.want, len(entries))
+		}
+	}
+}
+
 func TestGetTimeEntriesByTask(t *testing.T) {
 
 	conn := initTimeTestConnection(t)
 
 	var tests = []struct {
-		ID 		string
-		want	int
+		ID   string
+		want int
 	}{
 		{"21603507", 14},
 	}
@@ -60,7 +83,7 @@ func TestGetTimeEntriesByTask(t *testing.T) {
 		entries, err := conn.GetTimeEntriesByTask(v.ID)
 		if err != nil {
 			t.Errorf(err.Error())
-			
+
 		}
 		if len(entries) != v.want {
 			t.Errorf("expected %d time entries for task %s but got %d", v.want, v.ID, len(entries))
@@ -119,10 +142,10 @@ func TestGetTimeEntriesByPerson(t *testing.T) {
 	}
 
 	var tests = []struct {
-		ID 		string
-		from 	string
-		to 		string
-		want	string
+		ID   string
+		from string
+		to   string
+		want string
 	}{
 		{"", "20201012", "20201013", "missing required parameter(s): personID"},
 		{"abc", "", "", "strconv.Atoi: parsing \"abc\": invalid syntax"},
@@ -138,11 +161,11 @@ func TestGetTimeEntriesByPerson(t *testing.T) {
 		} else {
 			t.Errorf("Expected error for userID (%s)", v.ID)
 		}
-	}		
+	}
 }
 
 func TestPostTimeEntry(t *testing.T) {
-	
+
 	conn := initTimeTestConnection(t)
 
 	testData := initTimeTestData(t)
@@ -157,24 +180,24 @@ func TestPostTimeEntry(t *testing.T) {
 
 	for i, v := range testData.People {
 		tests[i].entry = &TimeEntry{
-			PersonID: v,
+			PersonID:    v,
 			Description: fmt.Sprintf("test entry %d", i),
-			Hours: strconv.Itoa(5 + i),
-			Minutes: "0",
-			Date: time.Now().Format("20060102"),
-			IsBillable: "false",
-			TaskID: testData.TaskID,
+			Hours:       strconv.Itoa(5 + i),
+			Minutes:     "0",
+			Date:        time.Now().Format("20060102"),
+			IsBillable:  "false",
+			TaskID:      testData.TaskID,
 		}
 		tests[i].error = false
 		tests[i].want = ""
 	}
 
-	tests = append(tests, 
-		testCase {entry: &TimeEntry {PersonID:"", Hours:"0", Minutes:"10",Date:"20201201", TaskID:""}, error: true, want: "time entry is missing required field(s): PersonID, TaskID"},
-		testCase {entry: &TimeEntry {PersonID:testData.People[0], Hours:"0", Minutes:"10",Date:"20201201", TaskID:"123456"}, error: true, want: "received ERROR response: Not Found"})
+	tests = append(tests,
+		testCase{entry: &TimeEntry{PersonID: "", Hours: "0", Minutes: "10", Date: "20201201", TaskID: ""}, error: true, want: "time entry is missing required field(s): PersonID, TaskID"},
+		testCase{entry: &TimeEntry{PersonID: testData.People[0], Hours: "0", Minutes: "10", Date: "20201201", TaskID: "123456"}, error: true, want: "received ERROR response: Not Found"})
 
 	for _, v := range tests {
-		
+
 		res, err := conn.PostTimeEntry(v.entry)
 
 		if err != nil {
@@ -194,7 +217,7 @@ func TestPostTimeEntry(t *testing.T) {
 				}
 			}
 		}
-	}		
+	}
 }
 
 func TestDeleteTimeEntry(t *testing.T) {
@@ -203,14 +226,14 @@ func TestDeleteTimeEntry(t *testing.T) {
 
 	testData := initTimeTestData(t)
 
-	testEntry := &TimeEntry {
-		PersonID: testData.People[0],
+	testEntry := &TimeEntry{
+		PersonID:    testData.People[0],
 		Description: fmt.Sprintf("test entry - DELETE"),
-		Hours: "5",
-		Minutes: "0",
-		Date: time.Now().Format("20060102"),
-		IsBillable: "false",
-		TaskID: testData.TaskID,
+		Hours:       "5",
+		Minutes:     "0",
+		Date:        time.Now().Format("20060102"),
+		IsBillable:  "false",
+		TaskID:      testData.TaskID,
 	}
 
 	id, err := conn.PostTimeEntry(testEntry)
@@ -219,9 +242,9 @@ func TestDeleteTimeEntry(t *testing.T) {
 	}
 
 	tests := []struct {
-		ID 		string
-		error 	bool
-		want 	string
+		ID    string
+		error bool
+		want  string
 	}{
 		{id, false, ""},
 		{"", true, "missing required parameter: ID"},
@@ -230,7 +253,7 @@ func TestDeleteTimeEntry(t *testing.T) {
 	}
 
 	for _, v := range tests {
-		
+
 		err := conn.DeleteTimeEntry(v.ID)
 
 		if err != nil {
@@ -246,32 +269,34 @@ func TestDeleteTimeEntry(t *testing.T) {
 				t.Errorf("expected error but got none")
 			}
 		}
-	}		
+	}
 }
 
-func TestSumHours(t *testing.T) {
+func TestTotalAndAvgHours(t *testing.T) {
 
-	conn := initTimeTestConnection(t)
-	testData := initTimeTestData(t)
+	var tests = []struct {
+		entries   []*TimeEntry
+		wantTotal float64
+		wantAvg   float64
+	}{
+		{[]*TimeEntry{{Hours: "10", Minutes: "0"}, {Hours: "5", Minutes: "0"}}, 15.00, 7.50},
+		{[]*TimeEntry{{Hours: "1", Minutes: "30"}, {Hours: "0", Minutes: "45"}}, 2.25, 1.13},
+		{[]*TimeEntry{{Hours: "1", Minutes: "59"}, {Hours: "4", Minutes: "1"}}, 6, 3},
+	}
 
-	for _, p := range testData.People {
-		for _, tp := range testData.TimePeriods {
+	for _, v := range tests {
 
-			entries, err := conn.GetTimeEntriesByPerson(p, tp["fromdate"], tp["todate"])
+		r, err := TotalAndAvgHours(v.entries)
+		if err != nil {
+			t.Errorf(err.Error())
+		}
 
-			if err != nil {
-				t.Errorf(err.Error())
-			}
+		if r["total"] != v.wantTotal {
+			t.Errorf("expected total hours to be %f but got %f", v.wantTotal, r["total"])
+		}
 
-			hours, err := SumHours(entries, p)
-
-			if err != nil {
-				t.Errorf(err.Error())
-			}
-
-			if hours < 1 {
-				t.Errorf("No hours found for user ID %s", p)
-			}
+		if r["avg"] != v.wantAvg {
+			t.Errorf("expected avg hours to be %f but got %f", v.wantAvg, r["avg"])
 		}
 	}
 }
