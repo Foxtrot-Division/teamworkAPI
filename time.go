@@ -11,6 +11,9 @@ import (
 	"github.com/google/go-querystring/query"
 )
 
+const TeamworkDateFormatShort = "20060102"
+const TeamworkDateFormatLong = time.RFC3339
+
 // TimeEntry models an individual time entry.
 type TimeEntry struct {
 	ID          string `json:"id"`
@@ -285,3 +288,41 @@ func TotalAndAvgHours(e []*TimeEntry) (map[string]float64, error) {
 
 	return retVal, nil
 }
+
+// DurationInDays gets the number of days between the specified dates.
+func DurationInDays(from string, to string) (int, error) {
+
+	start, err := time.Parse(TeamworkDateFormatShort, from)
+	if err != nil {
+		return 0, err
+	}	
+
+	end, err := time.Parse(TeamworkDateFormatShort, to)
+	if err != nil {
+		return 0, err
+	}
+
+	return int(end.Sub(start).Hours() / 24), nil
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

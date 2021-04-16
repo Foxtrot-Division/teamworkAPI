@@ -65,6 +65,25 @@ func TestGetTimeEntries(t *testing.T) {
 		if len(entries) != v.want {
 			t.Errorf("expected %d time entries but got %d", v.want, len(entries))
 		}
+
+		for i:= 1; i < len(entries); i++ {
+
+			currentDate, err := time.Parse(TeamworkDateFormatLong, entries[i].Date)
+			if err != nil {
+				t.Errorf(err.Error())
+			}
+			priorDate, err := time.Parse(TeamworkDateFormatLong, entries[i-1].Date)
+			if err != nil {
+				t.Errorf(err.Error())
+			}
+
+			if priorDate.Equal(currentDate) {
+				continue
+			}
+			if !priorDate.Before(currentDate) {
+				t.Errorf("dates out of order - %s is not before %s", priorDate, currentDate)
+			}
+		}
 	}
 }
 
@@ -299,4 +318,38 @@ func TestTotalAndAvgHours(t *testing.T) {
 			t.Errorf("expected avg hours to be %f but got %f", v.wantAvg, r["avg"])
 		}
 	}
+}
+
+func TestDurationInDays(t *testing.T) {
+
+	var tests = []struct {
+		from 	string
+		days 	int
+	}{
+		{"20210101", 380},
+	}
+
+	for _, v := range tests {
+
+		start, err := time.Parse(TeamworkDateFormatShort, v.from)
+		if err != nil {
+			t.Errorf(err.Error())
+		}
+
+		for i := 0; i < v.days; i++ {
+
+			d := start.AddDate(0, 0, i)
+
+			days, err := DurationInDays(start.Format(TeamworkDateFormatShort), d.Format(TeamworkDateFormatShort))
+			if err != nil {
+				t.Errorf(err.Error())
+			}
+
+			if days != i {
+				t.Errorf("expected diff of %d day(s) between %s and %s but got %d", i, 
+					start.Format(TeamworkDateFormatShort), d.Format(TeamworkDateFormatShort), days)
+			}
+		}
+	}
+
 }
