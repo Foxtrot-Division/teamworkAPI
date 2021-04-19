@@ -11,13 +11,18 @@ import (
 	"github.com/google/go-querystring/query"
 )
 
+// TeamworkDateFormatShort is the short-form of a date used by Teamwork.
 const TeamworkDateFormatShort = "20060102"
-const TeamworkDateFormatLong = time.RFC3339
+
+// TeamworkDateFormatLong is the long-form of a date/time used by Teamwork.
+const TeamworkDateFormatLong = "2006-01-02T15:04:05Z"
 
 // TimeEntry models an individual time entry.
 type TimeEntry struct {
 	ID          string `json:"id"`
 	PersonID    string `json:"person-id"`
+	Lastname 	string `json:"person-last-name"`
+	Firstname 	string `json:"person-first-name"`
 	Description string `json:"description"`
 	Hours       string `json:"hours"`
 	Minutes     string `json:"minutes"`

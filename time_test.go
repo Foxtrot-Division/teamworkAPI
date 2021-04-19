@@ -236,6 +236,8 @@ func TestPostTimeEntry(t *testing.T) {
 				}
 			}
 		}
+
+
 	}
 }
 
@@ -256,6 +258,12 @@ func TestDeleteTimeEntry(t *testing.T) {
 	}
 
 	id, err := conn.PostTimeEntry(testEntry)
+	if err != nil {
+		t.Errorf(err.Error())
+	}
+
+	fmt.Printf("test entry %s\n", id)
+	err = conn.DeleteTimeEntry(id)
 	if err != nil {
 		t.Errorf(err.Error())
 	}
@@ -285,7 +293,7 @@ func TestDeleteTimeEntry(t *testing.T) {
 			}
 		} else {
 			if v.error {
-				t.Errorf("expected error but got none")
+				t.Errorf("expected error for entry %s but got none", v.ID)
 			}
 		}
 	}
