@@ -41,11 +41,13 @@ type TasksJSON struct {
 
 // TaskQueryParams defines valid query parameters for this resource.
 type TaskQueryParams struct {
-	AssignedUserID   string `url:"responsible-party-ids,omitempty"`
-	FromDate         string `url:"startDate,omitempty"`
-	ToDate           string `url:"endDate,omitempty"`
-	IncludeCompleted bool   `url:"includeCompletedTasks,omitempty"`
-	Include          string `url:"include,omitempty"`
+	AssignedUserID   	string `url:"responsible-party-ids,omitempty"`
+	FromDate         	string `url:"startDate,omitempty"`
+	ToDate           	string `url:"endDate,omitempty"`
+	IncludeCompleted 	bool   `url:"includeCompletedTasks,omitempty"`
+	Include          	string `url:"include,omitempty"`
+	ProjectIDs			string `url:"projectIds,omitempty"`
+	PageSize 			string `url:"pageSize,omitempty"`
 }
 
 // FormatQueryParams formats query parameters for this resource.
