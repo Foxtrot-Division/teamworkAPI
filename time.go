@@ -14,6 +14,9 @@ import (
 // TeamworkDateFormatShort is the short-form of a date used by Teamwork.
 const TeamworkDateFormatShort = "20060102"
 
+// TeamworkDateFormatMed is the medium-form of a date/time used by Teamwork.
+const TeamworkDateFormatMed = "2006-01-02T15:04"
+
 // TeamworkDateFormatLong is the long-form of a date/time used by Teamwork.
 const TeamworkDateFormatLong = "2006-01-02T15:04:05Z"
 
