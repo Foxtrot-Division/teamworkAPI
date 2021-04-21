@@ -186,3 +186,32 @@ func TestGetTasks(t *testing.T) {
 		}
 	}
 }
+
+func TestGetTaskTotalHours(t *testing.T) {
+
+	conn := initTaskTestConnection(t)
+
+	var tests = []struct {
+		taskID 			string
+		wantActual 		float64
+		wantEstimated 	float64
+	}{
+		{"21603507", 222.30, 220.00},
+		{"21585386", 3.25, 25},
+	}
+
+	for _, v := range(tests) {
+		totals, err := conn.GetTaskHours(v.taskID)
+		if err != nil {
+			t.Errorf(err.Error())
+		}
+
+		if totals.ActualHours != v.wantActual {
+			t.Errorf("expected actual hours to be %f but got %f", v.wantActual, totals.ActualHours)
+		}
+
+		if totals.EstimatedHours != v.wantEstimated {
+			t.Errorf("expected actual hours to be %f but got %f", v.wantEstimated, totals.EstimatedHours)
+		}
+	}
+}

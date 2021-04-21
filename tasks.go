@@ -24,6 +24,7 @@ type Task struct {
 	EstimatedMin   int    `json:"estimated-minutes"`
 	Priority       string `json:"priority"`
 	AssignedUserID string `json:"responsible-party-id"`
+	TimeTotals	   *TimeTotals
 	Tags           []Tag  `json:"tags"`
 }
 
@@ -37,6 +38,33 @@ type TaskJSON struct {
 // facilitates unmarshalling.
 type TasksJSON struct {
 	Tasks []*Task `json:"todo-items"`
+}
+
+// TimeTotals summarizes actual and estimated hours for a specific task.
+type TimeTotals struct {
+	ActualHours		float64
+	EstimatedHours	float64
+}
+
+// TaskTimeTotalJSON is used to unmarshal the json response provided by call to
+// Teamwork API endpoint /tasks/{id}/time/total.json.
+type TaskTimeTotalJSON struct {
+	Tasklist struct {
+		Task struct {
+			TimeEstimates struct {
+				EstimatedHours string `json:"total-hours-estimated"`
+			} `json:"time-estimates"`
+			TimeTotals struct {
+				ActualHours string `json:"total-hours-sum"`
+			} `json:"time-totals"`
+		} `json:"task"`
+	} `json:"tasklist"`
+}
+
+// TaskTimeTotalsJSON is used to unmarshal the json response provided by call to
+// Teamwork API endpoint /tasks/{id}/time/total.json.
+type TaskTimeTotalsJSON struct {
+	Data []*TaskTimeTotalJSON `json:"projects"`
 }
 
 // TaskQueryParams defines valid query parameters for this resource.
@@ -125,4 +153,41 @@ func (conn *Connection) GetTasks(queryParams TaskQueryParams) ([]*Task, error) {
 	}
 
 	return tasks.Tasks, nil
+}
+
+// GetTaskHours returns the actual and estimated hours for the specified task.
+func (conn *Connection) GetTaskHours(taskID string) (*TimeTotals, error) {
+
+	endpoint := fmt.Sprintf("tasks/%s/time/total", taskID)
+
+	data, err := conn.GetRequest(endpoint, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	timeTotalsJSON := new(TaskTimeTotalsJSON)
+
+	err = json.Unmarshal(data, &timeTotalsJSON)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(timeTotalsJSON.Data) != 1 {
+		return nil, fmt.Errorf("expected TaskTimeTotals to be size 1 but got %d", len(timeTotalsJSON.Data))
+	}
+
+	estimatedHours, err := strconv.ParseFloat(timeTotalsJSON.Data[0].Tasklist.Task.TimeEstimates.EstimatedHours, 64)
+	if err != nil {
+		return nil, err
+	}
+	
+	actualHours, err := strconv.ParseFloat(timeTotalsJSON.Data[0].Tasklist.Task.TimeTotals.ActualHours, 64)
+	if err != nil {
+		return nil, err
+	}
+
+	return &TimeTotals {
+		EstimatedHours: estimatedHours,
+		ActualHours: actualHours,
+	}, nil
 }
