@@ -192,12 +192,13 @@ func TestGetTaskTotalHours(t *testing.T) {
 	conn := initTaskTestConnection(t)
 
 	var tests = []struct {
-		taskID 			string
-		wantActual 		float64
-		wantEstimated 	float64
+		taskID 				string
+		wantActual 			float64
+		wantEstimated 		float64
+		WantPercentError 	float64
 	}{
-		{"21603507", 222.30, 220.00},
-		{"21585386", 3.25, 25},
+		{"21603507", 222.30, 220.00, -1.05},
+		{"21585386", 3.25, 25, 87},
 	}
 
 	for _, v := range(tests) {
@@ -212,6 +213,33 @@ func TestGetTaskTotalHours(t *testing.T) {
 
 		if totals.EstimatedHours != v.wantEstimated {
 			t.Errorf("expected actual hours to be %f but got %f", v.wantEstimated, totals.EstimatedHours)
+		}
+
+		if totals.PercentError != v.WantPercentError {
+			t.Errorf("expected accuracy to be %f but got %f", v.WantPercentError, totals.PercentError)
+		}
+	}
+}
+
+func TestCalculateEstimateError(t *testing.T) {
+
+	var tests = []struct {
+		actual 		float64
+		estimate 	float64
+		want 		float64
+	}{
+		{222.30, 220.00, -1.05},
+		{30, 5, -500},
+		{5, 10, 50},
+		{2, 2, 0},
+	}
+
+	for _, v := range(tests) {
+
+		accuracy := CalculateEstimateError(v.estimate, v.actual)
+
+		if accuracy != v.want {
+			t.Errorf("expected percent error to be %f but got %f", v.want, accuracy)
 		}
 	}
 }

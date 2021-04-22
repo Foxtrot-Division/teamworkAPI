@@ -3,6 +3,7 @@ package teamworkapi
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"strconv"
 	"time"
 
@@ -44,6 +45,7 @@ type TasksJSON struct {
 type TimeTotals struct {
 	ActualHours		float64
 	EstimatedHours	float64
+	PercentError 	float64
 }
 
 // TaskTimeTotalJSON is used to unmarshal the json response provided by call to
@@ -155,7 +157,8 @@ func (conn *Connection) GetTasks(queryParams TaskQueryParams) ([]*Task, error) {
 	return tasks.Tasks, nil
 }
 
-// GetTaskHours returns the actual and estimated hours for the specified task.
+// GetTaskHours returns actual and estimated hours, and percent error in
+// estimated hours for the specified task.
 func (conn *Connection) GetTaskHours(taskID string) (*TimeTotals, error) {
 
 	endpoint := fmt.Sprintf("tasks/%s/time/total", taskID)
@@ -189,5 +192,14 @@ func (conn *Connection) GetTaskHours(taskID string) (*TimeTotals, error) {
 	return &TimeTotals {
 		EstimatedHours: estimatedHours,
 		ActualHours: actualHours,
+		PercentError: CalculateEstimateError(estimatedHours, actualHours),
 	}, nil
+}
+
+// CalculateEstimateError determines the percent error of a time estimate.
+func CalculateEstimateError(estimate float64, actual float64) (float64) {
+	
+	accuracy := (estimate - actual) / estimate * 100
+
+	return math.Round(accuracy * 100) / 100
 }
