@@ -78,6 +78,8 @@ type TaskQueryParams struct {
 	Include          	string `url:"include,omitempty"`
 	ProjectIDs			string `url:"projectIds,omitempty"`
 	PageSize 			string `url:"pageSize,omitempty"`
+	CompletedBefore		string `url:"completedBefore"`
+	CompletedAfter 		string `url:"completedAfter"`
 }
 
 // FormatQueryParams formats query parameters for this resource.
