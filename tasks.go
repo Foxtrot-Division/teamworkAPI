@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+	"net/http"
 	"strconv"
 	"time"
 
@@ -25,8 +26,8 @@ type Task struct {
 	EstimatedMin   int    `json:"estimated-minutes"`
 	Priority       string `json:"priority"`
 	AssignedUserID string `json:"responsible-party-id"`
-	TimeTotals	   *TimeTotals
-	Tags           []Tag  `json:"tags"`
+	TimeTotals     *TimeTotals
+	Tags           []Tag `json:"tags"`
 }
 
 // TaskJSON models the parent JSON structure of an individual task and
@@ -41,11 +42,33 @@ type TasksJSON struct {
 	Tasks []*Task `json:"todo-items"`
 }
 
+type TaskV3 struct {
+	Description      string `json:"description"`
+	EstimatedMinutes int    `json:"estimatedMinutes"`
+	Name             string `json:"name"`
+	Private          bool   `json:"private"`
+}
+
+type TaskV3JSON struct {
+	Task TaskV3 `json:"task"`
+}
+
+type TaskResponseV3 struct {
+	ID int `json:"id"`
+}
+
+// TaskResponseHandlerV3 models a http response for a Task operation using version 3 of teamwork api.
+type TaskResponseHandlerV3 struct {
+	Status  string         `json:"STATUS"`
+	Message string         `json:"MESSAGE"`
+	Task    TaskResponseV3 `json:"task`
+}
+
 // TimeTotals summarizes actual and estimated hours for a specific task.
 type TimeTotals struct {
-	ActualHours		float64
-	EstimatedHours	float64
-	PercentError 	float64
+	ActualHours    float64
+	EstimatedHours float64
+	PercentError   float64
 }
 
 // TaskTimeTotalJSON is used to unmarshal the json response provided by call to
@@ -71,15 +94,42 @@ type TaskTimeTotalsJSON struct {
 
 // TaskQueryParams defines valid query parameters for this resource.
 type TaskQueryParams struct {
-	AssignedUserID   	string `url:"responsible-party-ids,omitempty"`
-	FromDate         	string `url:"startDate,omitempty"`
-	ToDate           	string `url:"endDate,omitempty"`
-	IncludeCompleted 	bool   `url:"includeCompletedTasks,omitempty"`
-	Include          	string `url:"include,omitempty"`
-	ProjectIDs			string `url:"projectIds,omitempty"`
-	PageSize 			string `url:"pageSize,omitempty"`
-	CompletedBefore		string `url:"completedBefore"`
-	CompletedAfter 		string `url:"completedAfter"`
+	AssignedUserID   string `url:"responsible-party-ids,omitempty"`
+	FromDate         string `url:"startDate,omitempty"`
+	ToDate           string `url:"endDate,omitempty"`
+	IncludeCompleted bool   `url:"includeCompletedTasks,omitempty"`
+	Include          string `url:"include,omitempty"`
+	ProjectIDs       string `url:"projectIds,omitempty"`
+	PageSize         string `url:"pageSize,omitempty"`
+	CompletedBefore  string `url:"completedBefore"`
+	CompletedAfter   string `url:"completedAfter"`
+}
+
+func (resMsg *TaskResponseHandlerV3) ParseResponse(httpMethod string, rawRes []byte) error {
+	// b := string(rawRes)
+	// fmt.Println(b)
+
+	err := json.Unmarshal(rawRes, &resMsg)
+	if err != nil {
+		return err
+	}
+	// fmt.Println("REPOSNE")
+	// fmt.Println(resMsg.Response)
+
+	if resMsg.Status == "Error" {
+		return fmt.Errorf("received ERROR response: %s", resMsg.Message)
+	}
+
+	switch httpMethod {
+	case http.MethodPost:
+		// ABC€
+
+		if resMsg.Task.ID == 0 {
+			return fmt.Errorf("no task id returned for Task Post request ")
+		}
+	}
+
+	return nil
 }
 
 // FormatQueryParams formats query parameters for this resource.
@@ -159,6 +209,50 @@ func (conn *Connection) GetTasks(queryParams TaskQueryParams) ([]*Task, error) {
 	return tasks.Tasks, nil
 }
 
+// Creates a Task given the task list Id
+func (conn *Connection) PostTask(taskListID string, postData TaskV3JSON) (int, error) {
+
+	handler := new(TaskResponseHandlerV3)
+	//b :=byteData.Bytes()
+	//fmt.Printf(handler.Message)
+	b, err := json.Marshal(postData)
+	if err != nil {
+		return 0, err
+	}
+
+	err1 := conn.PostRequest("tasklists/"+taskListID+"/tasks", b, handler)
+	if err1 != nil {
+		return 0, err1
+	}
+
+	if err != nil {
+		return 0, err
+	}
+
+	return handler.Task.ID, nil
+}
+
+//Creates a subtask given the parent's task ID
+func (conn *Connection) PostSubTask(parentTaskID string, postData TaskV3JSON) (int, error) {
+
+	handler := new(TaskResponseHandlerV3)
+	b, err := json.Marshal(postData)
+	if err != nil {
+		return 0, err
+	}
+
+	err1 := conn.PostRequest("tasks/"+parentTaskID+"/subtasks", b, handler)
+	if err1 != nil {
+		return 0, err1
+	}
+
+	if err != nil {
+		return 0, err
+	}
+
+	return handler.Task.ID, nil
+}
+
 // GetTaskHours returns actual and estimated hours, and percent error in
 // estimated hours for the specified task.
 func (conn *Connection) GetTaskHours(taskID string) (*TimeTotals, error) {
@@ -185,23 +279,23 @@ func (conn *Connection) GetTaskHours(taskID string) (*TimeTotals, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	actualHours, err := strconv.ParseFloat(timeTotalsJSON.Data[0].Tasklist.Task.TimeTotals.ActualHours, 64)
 	if err != nil {
 		return nil, err
 	}
 
-	return &TimeTotals {
+	return &TimeTotals{
 		EstimatedHours: estimatedHours,
-		ActualHours: actualHours,
-		PercentError: CalculateEstimateError(estimatedHours, actualHours),
+		ActualHours:    actualHours,
+		PercentError:   CalculateEstimateError(estimatedHours, actualHours),
 	}, nil
 }
 
 // CalculateEstimateError determines the percent error of a time estimate.
-func CalculateEstimateError(estimate float64, actual float64) (float64) {
-	
+func CalculateEstimateError(estimate float64, actual float64) float64 {
+
 	accuracy := (estimate - actual) / estimate * 100
 
-	return math.Round(accuracy * 100) / 100
+	return math.Round(accuracy*100) / 100
 }

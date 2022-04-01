@@ -11,20 +11,66 @@ import (
 )
 
 type taskTestData struct {
-	UserIDs 		string 	`json:"users"`
-	From			string 	`json:"from"`
-	To 				string 	`json:"to"`
-	Count   		int		`json:"count"`
-	ExampleTaskID 	string 	`json:"exampleTaskID"`
-	Include 		string  `json:"include"`
+	UserIDs       string `json:"users"`
+	From          string `json:"from"`
+	To            string `json:"to"`
+	Count         int    `json:"count"`
+	ExampleTaskID string `json:"exampleTaskID"`
+	Include       string `json:"include"`
+}
+type parentTaskJson struct {
+	ID   int    `json:"id"`
+	Type string `json:"type"`
+}
+type CreateTaskTestData struct {
+	Description      string         `json:"description"`
+	EstimatedMinutes int            `json:"estimatedMinutes"`
+	Name             string         `json:"name"`
+	ParentTaskId     parentTaskJson `json:"parentTask"`
+	Private          bool           `json:"private"`
 }
 
 type taskTestDataJSON struct {
 	Data []taskTestData `json:"data"`
 }
 
+func initTaskTestConnectionV3(t *testing.T) *Connection {
+	//	conn, err := NewConnectionFromJSON("./testdata/apiConfigTestData1.json")
+	conn, err := NewConnection("twp_UtkI6MKeqjAgnW9hUtM8col7WTf7", "foxtrotdivision", "", "v3")
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+
+	return conn
+}
+
+func loadTaskTestDataV3(t *testing.T) TaskV3JSON {
+
+	f, err := os.Open("./testdata/taskTestData.json")
+	defer f.Close()
+
+	if err != nil {
+		t.Errorf(err.Error())
+	}
+
+	data := new(TaskV3JSON)
+
+	raw, err := ioutil.ReadAll(f)
+	if err != nil {
+		t.Errorf(err.Error())
+	}
+
+	err = json.Unmarshal(raw, &data)
+	if err != nil {
+		t.Errorf(err.Error())
+	}
+
+	return *data
+}
+
 func initTaskTestConnection(t *testing.T) *Connection {
-	conn, err := NewConnectionFromJSON("./testdata/apiConfigTestData1.json")
+	//	conn, err := NewConnectionFromJSON("./testdata/apiConfigTestData1.json")
+	conn, err := NewConnection("twp_UtkI6MKeqjAgnW9hUtM8col7WTf7", "foxtrotdivision", "", "v3")
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
@@ -36,13 +82,13 @@ func loadTaskTestData(t *testing.T) []taskTestData {
 
 	f, err := os.Open("./testdata/taskTestData.json")
 	defer f.Close()
-	
+
 	if err != nil {
 		t.Errorf(err.Error())
 	}
 
 	data := new(taskTestDataJSON)
-	
+
 	raw, err := ioutil.ReadAll(f)
 	if err != nil {
 		t.Errorf(err.Error())
@@ -59,10 +105,10 @@ func loadTaskTestData(t *testing.T) []taskTestData {
 func TestFormatQueryParams(t *testing.T) {
 	// test error responses
 	var tests = []struct {
-		qp 		TaskQueryParams
-		want	url.Values
+		qp   TaskQueryParams
+		want url.Values
 	}{
-		{TaskQueryParams{AssignedUserID: "123456,102040"}, url.Values{"responsible-party-ids":{"123456,102040"}}},
+		{TaskQueryParams{AssignedUserID: "123456,102040"}, url.Values{"responsible-party-ids": {"123456,102040"}}},
 		{TaskQueryParams{FromDate: "20201201", ToDate: "20201230"}, url.Values{"startDate": {"20201201"}, "endDate": {"20201230"}}},
 		{TaskQueryParams{IncludeCompleted: true}, url.Values{"includeCompletedTasks": {"true"}}},
 		{TaskQueryParams{}, url.Values{}},
@@ -84,10 +130,10 @@ func TestFormatQueryParams(t *testing.T) {
 			t.Errorf("expected query keys/values (%s) but got (%s)", v.want, result)
 		}
 	}
-	
+
 	var tests2 = []struct {
-		qp 		TaskQueryParams
-		want	string
+		qp   TaskQueryParams
+		want string
 	}{
 		{TaskQueryParams{FromDate: "10/2/2020", ToDate: "10/5/2020"}, "invalid format for FromDate parameter.  Should be YYYYMMDD, but found 10/2/2020"},
 		{TaskQueryParams{FromDate: "20201002", ToDate: "10/5/2020"}, "invalid format for ToDate parameter.  Should be YYYYMMDD, but found 10/5/2020"},
@@ -107,14 +153,14 @@ func TestFormatQueryParams(t *testing.T) {
 }
 
 func TestGetTaskByID(t *testing.T) {
-	
+
 	testData := loadTaskTestData(t)
 
 	conn := initTaskTestConnection(t)
 
 	// test valid cases
 	for _, v := range testData {
-		
+
 		//task, err := conn.GetTaskByID(v.ExampleTaskID)
 		task, err := conn.GetTaskByID("14288573")
 		if err != nil {
@@ -141,8 +187,8 @@ func TestGetTaskByID(t *testing.T) {
 
 	// test error responses
 	var tests = []struct {
-		ID 		string
-		want	string
+		ID   string
+		want string
 	}{
 		{"123456", "failed to retrieve task with ID (123456)"},
 		{"bad-content", "invalid value (bad-content) for ID"},
@@ -158,7 +204,7 @@ func TestGetTaskByID(t *testing.T) {
 		} else {
 			t.Errorf("Expected error for taskID (%s)", v.ID)
 		}
-	}		
+	}
 }
 
 func TestGetTasks(t *testing.T) {
@@ -169,22 +215,57 @@ func TestGetTasks(t *testing.T) {
 
 	for _, v := range testData {
 
-		q := TaskQueryParams {
+		q := TaskQueryParams{
 			AssignedUserID: v.UserIDs,
-			FromDate: v.From,
-			ToDate: v.To,
-			Include: v.Include,
+			FromDate:       v.From,
+			ToDate:         v.To,
+			Include:        v.Include,
 		}
-	
+
 		tasks, err := conn.GetTasks(q)
 		if err != nil {
 			t.Errorf(err.Error())
 		}
-	
+
 		if len(tasks) < 1 {
 			t.Errorf("no tasks returned %s", conn.RequestURL)
 		}
 	}
+}
+func TestCreateTask(t *testing.T) {
+	conn := initTaskTestConnectionV3(t)
+
+	testData := loadTaskTestDataV3(t)
+
+	_, err := conn.PostTask("1781185", testData)
+	if err != nil {
+		t.Errorf(err.Error())
+
+	}
+	//fmt.Println(ret)
+
+}
+
+func TestCreateSubTask(t *testing.T) {
+	conn := initTaskTestConnectionV3(t)
+
+	testData := loadTaskTestDataV3(t)
+
+	ret, err := conn.PostTask("1781185", testData)
+	if err != nil {
+		t.Errorf(err.Error())
+
+	}
+	strID := strconv.Itoa(ret)
+
+	testData.Task.Name = "SubTask"
+	_, err = conn.PostSubTask(strID, testData)
+	if err != nil {
+		t.Errorf(err.Error())
+
+	}
+	//	fmt.Println(postSubTask)
+
 }
 
 func TestGetTaskTotalHours(t *testing.T) {
@@ -192,16 +273,16 @@ func TestGetTaskTotalHours(t *testing.T) {
 	conn := initTaskTestConnection(t)
 
 	var tests = []struct {
-		taskID 				string
-		wantActual 			float64
-		wantEstimated 		float64
-		WantPercentError 	float64
+		taskID           string
+		wantActual       float64
+		wantEstimated    float64
+		WantPercentError float64
 	}{
 		{"21603507", 222.30, 220.00, -1.05},
 		{"21585386", 3.25, 25, 87},
 	}
 
-	for _, v := range(tests) {
+	for _, v := range tests {
 		totals, err := conn.GetTaskHours(v.taskID)
 		if err != nil {
 			t.Errorf(err.Error())
@@ -224,9 +305,9 @@ func TestGetTaskTotalHours(t *testing.T) {
 func TestCalculateEstimateError(t *testing.T) {
 
 	var tests = []struct {
-		actual 		float64
-		estimate 	float64
-		want 		float64
+		actual   float64
+		estimate float64
+		want     float64
 	}{
 		{222.30, 220.00, -1.05},
 		{30, 5, -500},
@@ -234,7 +315,7 @@ func TestCalculateEstimateError(t *testing.T) {
 		{2, 2, 0},
 	}
 
-	for _, v := range(tests) {
+	for _, v := range tests {
 
 		accuracy := CalculateEstimateError(v.estimate, v.actual)
 

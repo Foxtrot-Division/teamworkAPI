@@ -9,14 +9,14 @@ import (
 )
 
 type GenericQueryParams struct {
-	Sort string `url:"sort,omitempty"`
-	Status string `url:"status,omitempty"`
-	IncludePeople bool `url:"includePeople,omitempty"`
-	IncludeArchivedProjects bool `url:"includeArchivedProjects,omitempty"`
+	Sort                    string `url:"sort,omitempty"`
+	Status                  string `url:"status,omitempty"`
+	IncludePeople           bool   `url:"includePeople,omitempty"`
+	IncludeArchivedProjects bool   `url:"includeArchivedProjects,omitempty"`
 }
 
 func (params GenericQueryParams) FormatQueryParams() (string, error) {
-	
+
 	p, err := query.Values(params)
 	if err != nil {
 		return "", err
@@ -29,33 +29,32 @@ func TestNewConnection(t *testing.T) {
 
 	// test error conditions
 	var tests1 = []struct {
-		key			string
-		site 		string
-		dataPref 	string
-		err  		bool
-		want 		string
+		key      string
+		site     string
+		dataPref string
+		err      bool
+		want     string
 	}{
 		{key: "someKey", site: "someSite", dataPref: "json", err: false, want: ""},
-		{key: "123456!$", site:"", dataPref:"json", err: true, want: "missing required parameter(s): siteName"},
-		{key: "", site:"", dataPref:"", err: true, want:"missing required parameter(s): apiKey, siteName"},
-		{key: "buddha", site:"belly", dataPref:"", err: false, want:""},
+		{key: "123456!$", site: "", dataPref: "json", err: true, want: "missing required parameter(s): siteName"},
+		{key: "", site: "", dataPref: "", err: true, want: "missing required parameter(s): apiKey, siteName"},
+		{key: "buddha", site: "belly", dataPref: "", err: false, want: ""},
 	}
 
 	// test default setting for dataPreference
 	var tests2 = []struct {
-		key			string
-		site 		string
-		dataPref 	string
-		want 		string
+		key      string
+		site     string
+		dataPref string
+		want     string
 	}{
 		{key: "someKey", site: "someSite", dataPref: "", want: "json"},
-		{key: "vader", site:"deathstar", dataPref:"json", want: "json"},
-		{key: "gold", site:"bravo", dataPref:"someFormat", want: "someFormat"},
+		{key: "vader", site: "deathstar", dataPref: "json", want: "json"},
+		{key: "gold", site: "bravo", dataPref: "someFormat", want: "someFormat"},
 	}
 
 	for _, v := range tests1 {
-
-		conn, err := NewConnection(v.key, v.site, v.dataPref)
+		conn, err := NewConnection(v.key, v.site, v.dataPref, "v1")
 
 		if err != nil {
 			if !v.err {
@@ -72,7 +71,7 @@ func TestNewConnection(t *testing.T) {
 				if conn.APIKey != v.key {
 					t.Errorf("expected APIKey (%s) but got (%s)", v.key, conn.APIKey)
 				}
-		
+
 				if conn.SiteName != v.site {
 					t.Errorf("expected SiteName(%s) but got (%s)", v.site, conn.SiteName)
 				}
@@ -82,7 +81,7 @@ func TestNewConnection(t *testing.T) {
 
 	for _, v := range tests2 {
 
-		conn, err := NewConnection(v.key, v.site, v.dataPref)
+		conn, err := NewConnection(v.key, v.site, v.dataPref, "v1")
 
 		if err != nil {
 			t.Errorf(err.Error())
@@ -98,20 +97,20 @@ func TestNewTeamworkAPIFromJSON(t *testing.T) {
 
 	// test error conditions
 	var tests1 = []struct {
-		fileName	string
-		err  		bool
-		want 		string
+		fileName string
+		err      bool
+		want     string
 	}{
 		{fileName: "apiConfigTestData1.json", err: false, want: ""},
 		{fileName: "apiConfigTestData2.json", err: true, want: "missing required parameter(s): apiKey"},
-		{fileName: "apiConfigTestData3.json", err: true, want:"missing required parameter(s): apiKey, siteName"},
-		{fileName: "badFileName.json", err: true, want:"Failed to open JSON file at ./testdata/badFileName.json"},
+		{fileName: "apiConfigTestData3.json", err: true, want: "missing required parameter(s): apiKey, siteName"},
+		{fileName: "badFileName.json", err: true, want: "Failed to open JSON file at ./testdata/badFileName.json"},
 	}
 
 	// test default setting for dataPreference
 	var tests2 = []struct {
-		fileName	string
-		want 		string
+		fileName string
+		want     string
 	}{
 		{fileName: "apiConfigTestData4.json", want: "json"},
 		{fileName: "apiConfigTestData5.json", want: "someFormat"},
@@ -133,7 +132,7 @@ func TestNewTeamworkAPIFromJSON(t *testing.T) {
 			if v.err {
 				t.Errorf("expected error for input (key: %s, site: %s, dataPref: %s)", conn.APIKey, conn.SiteName, conn.DataPreference)
 			} else {
-				if conn.URL != "https://" + conn.SiteName + ".teamwork.com/" {
+				if conn.URL != "https://"+conn.SiteName+".teamwork.com/" {
 					t.Errorf("URL (%s) not formed correctly", conn.URL)
 				}
 			}
@@ -160,16 +159,16 @@ func TestGetRequest(t *testing.T) {
 
 	// test sample of good/bad endpoints
 	var tests = []struct {
-		endpoint 	string
-		params   	GenericQueryParams
-		want   		string
+		endpoint string
+		params   GenericQueryParams
+		want     string
 	}{
 		{"projects", GenericQueryParams{}, "OK"},
 		{"people", GenericQueryParams{}, "OK"},
 		{"companies", GenericQueryParams{}, "OK"},
 		{"buffalo", GenericQueryParams{}, ""},
-		{"people", GenericQueryParams {Sort: "company"}, "OK"},
-		{"projects", GenericQueryParams {Status: "ACTIVE", IncludePeople: true}, "OK"},
+		{"people", GenericQueryParams{Sort: "company"}, "OK"},
+		{"projects", GenericQueryParams{Status: "ACTIVE", IncludePeople: true}, "OK"},
 		{"tasks", GenericQueryParams{Sort: "project", IncludeArchivedProjects: true}, "OK"},
 	}
 
