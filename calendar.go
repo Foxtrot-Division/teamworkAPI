@@ -48,6 +48,12 @@ type CalendarEventQueryParams struct {
 	EventTypeID string `url:"eventTypeId,omitempty"`
 }
 
+type CalendarEventQueryParamsV3 struct {
+	CreatedByUserID int    `url:"createdByUserId,omitempty"`
+	StartDate       string `url:"startDate,omitempty"`
+	EndDate         string `url:"endDate,omitempty"`
+}
+
 // FormatQueryParams formats query parameters for this resource.
 func (qp CalendarEventQueryParams) FormatQueryParams() (string, error) {
 
@@ -92,3 +98,20 @@ func (conn *Connection) GetCalendarEvents(queryParams CalendarEventQueryParams) 
 
 	return events.Events, nil
 }
+
+// func (conn *Connection) GetCalendarEventsV3(queryParams CalendarEventQueryParamsV3) ([]*CalendarEvent, error) {
+
+// 	data, err := conn.GetRequestV3("calendar/events", queryParams)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+
+// 	events := new(CalendarEventsJSON)
+
+// 	err = json.Unmarshal(data, &events)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+
+// 	return events.Events, nil
+// }

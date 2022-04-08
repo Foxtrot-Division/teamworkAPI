@@ -20,6 +20,10 @@ type QueryParams interface {
 	FormatQueryParams() (string, error)
 }
 
+type QueryParamsV3 interface {
+	FormatQueryParamsV3() (string, error)
+}
+
 // ResponseHandler is a generic interface to be implemented by a resource (e.g.
 // Projects, Tasks, People, etc.) to properly interpret a http response.
 type ResponseHandler interface {
@@ -136,6 +140,48 @@ func NewConnectionFromJSON(pathToJSONFile string) (*Connection, error) {
 	conn.URL = "https://" + conn.SiteName + ".teamwork.com/"
 
 	return conn, nil
+}
+
+func (conn *Connection) GetRequestV3(endpoint string, params QueryParamsV3) ([]byte, error) {
+
+	if endpoint == "" {
+		return nil, fmt.Errorf("missing required parameter(s): endpoint")
+	}
+
+	client := &http.Client{}
+
+	queryParams := ""
+
+	var err error
+
+	if params != nil {
+		s, err := params.FormatQueryParamsV3()
+		if err != nil {
+			return nil, err
+		}
+
+		queryParams += "?" + s
+	}
+
+	conn.RequestURL = conn.URL + endpoint + "." + conn.DataPreference + queryParams
+	fmt.Println(conn.RequestURL)
+
+	req, err := http.NewRequest("GET", conn.RequestURL, nil)
+
+	req.Header.Add("Authorization", "Basic "+basicAuth(conn.APIKey))
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	data, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	// b := string(data)
+	// fmt.Println(b)
+	return data, nil
 }
 
 // GetRequest performs a HTTP GET on the desired endpoint, with the specific query parameters.

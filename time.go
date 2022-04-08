@@ -24,8 +24,8 @@ const TeamworkDateFormatLong = "2006-01-02T15:04:05Z"
 type TimeEntry struct {
 	ID          string `json:"id"`
 	PersonID    string `json:"person-id"`
-	Lastname 	string `json:"person-last-name"`
-	Firstname 	string `json:"person-first-name"`
+	Lastname    string `json:"person-last-name"`
+	Firstname   string `json:"person-first-name"`
 	Description string `json:"description"`
 	Hours       string `json:"hours"`
 	Minutes     string `json:"minutes"`
@@ -54,12 +54,30 @@ type TimeResponseHandler struct {
 	TimeEntryID string `json:"timeLogId"`
 }
 
+type TimeResponseHandlerV3 struct {
+	Status  string      `json:"STATUS"`
+	Message string      `json:"MESSAGE"`
+	TimeLog []TimeLogV3 `json:"timelogs"`
+}
+
 // TimeQueryParams defines valid query parameters for this resource.
 type TimeQueryParams struct {
 	UserID   string `url:"userId,omitempty"`
 	FromDate string `url:"fromdate,omitempty"`
 	ToDate   string `url:"todate,omitempty"`
 	PageSize string `url:"pageSize,omitempty"`
+}
+type TimeQueryParamsV3 struct {
+	EndDate   string `url:"endDate,omitempty"`
+	ProjectID string `url:"projectId,omitempty"`
+}
+type TimeLogV3 struct {
+	ID      int `json:"userId"`
+	Minutes int `json:"minutes"`
+	TaskID  int `json:"taskId"`
+}
+type TimeLogJSON struct {
+	TimeLog []*TimeLogV3 `json:"timelogs"`
 }
 
 // ParseResponse interprets a http response for a TimeEntry operation such as
@@ -85,6 +103,33 @@ func (resMsg *TimeResponseHandler) ParseResponse(httpMethod string, rawRes []byt
 	return nil
 }
 
+// func (resMsg *TimeResponseHandlerV3) ParseResponseV3(httpMethod string, rawRes []byte) error {
+
+// 	b := string(rawRes)
+// 	fmt.Println(b)
+
+// 	fmt.Println("raw resp")
+// 	err := json.Unmarshal(rawRes, &resMsg)
+// 	if err != nil {
+// 		return err
+// 	}
+
+// 	if resMsg.Status == "Error" {
+// 		return fmt.Errorf("received ERROR response: %s", resMsg.Message)
+// 	}
+
+// 	switch httpMethod {
+// 	case http.MethodPost:
+// 		if resMsg.TimeLog[0].ID == 0 {
+// 			return fmt.Errorf("no time entry returned")
+// 		}
+// 	}
+
+// 	//fmt.Println(resMsg.TimeLog[0].Minutes)
+
+// 	return nil
+// }
+
 // FormatQueryParams formats query parameters for this resource.
 func (qp *TimeQueryParams) FormatQueryParams() (string, error) {
 
@@ -109,6 +154,21 @@ func (qp *TimeQueryParams) FormatQueryParams() (string, error) {
 
 	return s.Encode(), nil
 }
+func (qp *TimeQueryParamsV3) FormatQueryParamsV3() (string, error) {
+
+	if qp.EndDate != "" {
+		_, err := time.Parse("2006-01-02", qp.EndDate)
+		if err != nil {
+			return "", fmt.Errorf("invalid format for FromDate parameter.  Should be YYYYMMDD, but found %s", qp.EndDate)
+		}
+	}
+	s, err := query.Values(qp)
+	if err != nil {
+		return "", err
+	}
+
+	return s.Encode(), nil
+}
 
 // GetTimeEntries retrieve time entries specified by queryParams.
 func (conn *Connection) GetTimeEntries(queryParams *TimeQueryParams) ([]*TimeEntry, error) {
@@ -123,6 +183,20 @@ func (conn *Connection) GetTimeEntries(queryParams *TimeQueryParams) ([]*TimeEnt
 		return nil, err
 	}
 	return entries.TimeEntries, nil
+}
+
+func (conn *Connection) GetTimeEntriesV3(queryParams *TimeQueryParamsV3) ([]*TimeLogV3, error) {
+
+	data, err := conn.GetRequestV3("time", queryParams)
+	if err != nil {
+		return nil, err
+	}
+	entries := new(TimeLogJSON)
+	err = json.Unmarshal(data, &entries)
+	if err != nil {
+		return nil, err
+	}
+	return entries.TimeLog, nil
 }
 
 // GetTimeEntriesByTask retrieves all time entries for the specified Task.
@@ -303,7 +377,7 @@ func DurationInDays(from string, to string) (int, error) {
 	start, err := time.Parse(TeamworkDateFormatShort, from)
 	if err != nil {
 		return 0, err
-	}	
+	}
 
 	end, err := time.Parse(TeamworkDateFormatShort, to)
 	if err != nil {
@@ -312,25 +386,3 @@ func DurationInDays(from string, to string) (int, error) {
 
 	return int(end.Sub(start).Hours() / 24), nil
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
