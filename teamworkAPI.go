@@ -207,7 +207,7 @@ func (conn *Connection) GetRequest(endpoint string, params QueryParams) ([]byte,
 	}
 
 	conn.RequestURL = conn.URL + endpoint + "." + conn.DataPreference + queryParams
-
+	fmt.Println(conn.RequestURL)
 	req, err := http.NewRequest("GET", conn.RequestURL, nil)
 
 	req.Header.Add("Authorization", "Basic "+basicAuth(conn.APIKey))

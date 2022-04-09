@@ -69,6 +69,7 @@ type TimeQueryParams struct {
 }
 type TimeQueryParamsV3 struct {
 	EndDate   string `url:"endDate,omitempty"`
+	StartDate string `url:"startDate,omitempty"`
 	ProjectID string `url:"projectId,omitempty"`
 }
 type TimeLogV3 struct {

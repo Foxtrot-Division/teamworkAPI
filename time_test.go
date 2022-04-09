@@ -17,7 +17,7 @@ type TimeTestData struct {
 }
 
 func initTimeTestConnection(t *testing.T) *Connection {
-	conn, err := NewConnection("", "foxtrotdivision", "", "v3")
+	conn, err := NewConnection("water589meat", "foxtrotdivision", "", "v3")
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
