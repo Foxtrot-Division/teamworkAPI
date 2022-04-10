@@ -232,6 +232,7 @@ func (conn *Connection) GetRequest(endpoint string, params QueryParams) ([]byte,
 func (conn *Connection) PostRequest(endpoint string, data []byte, resHandler ResponseHandler) error {
 
 	client := &http.Client{}
+
 	req, err := http.NewRequest("POST", conn.URL+endpoint+".json", bytes.NewBuffer(data))
 	req.Header.Add("Authorization", "Basic "+basicAuth(conn.APIKey))
 	req.Header.Set("Content-Type", "application/json")
@@ -249,7 +250,6 @@ func (conn *Connection) PostRequest(endpoint string, data []byte, resHandler Res
 	if resHandler == nil {
 		resHandler = new(GeneralResponse)
 	}
-
 	err = resHandler.ParseResponse(http.MethodPost, body)
 
 	return err
