@@ -26,6 +26,9 @@ type CalendarEvent struct {
 type CalendarEventsJSON struct {
 	Events []*CalendarEvent `json:"events"`
 }
+type CalendarEventsJSONV3 struct {
+	Events []*CalendarEventsV3JSON `json:"calendarEvents"`
+}
 
 // EventType models a Teamwork Calendar Event Type.
 type EventType struct {
@@ -46,6 +49,16 @@ type CalendarEventQueryParams struct {
 	From        string `url:"startdate,omitempty"`
 	To          string `url:"endDate,omitempty"`
 	EventTypeID string `url:"eventTypeId,omitempty"`
+}
+type CalendarEventQueryParamsV3 struct {
+	EndDate   string `url:"endDate,omitempty"`
+	StartDate string `url:"startDate,omitempty"`
+	ProjectID string `url:"projectId,omitempty"`
+}
+type CalendarEventsV3JSON struct {
+	AttendingUserIds []int  `url:"attendingUserIds,omitempty"`
+	StartDate        string `url:"startDate,omitempty"`
+	EndDate          string `url:"endDate,omitempty"`
 }
 
 // FormatQueryParams formats query parameters for this resource.
@@ -74,6 +87,29 @@ func (qp CalendarEventQueryParams) FormatQueryParams() (string, error) {
 
 	return params.Encode(), nil
 }
+func (qp CalendarEventQueryParamsV3) FormatQueryParamsV3() (string, error) {
+
+	if qp.StartDate != "" {
+		_, err := time.Parse("2006-01-02", qp.StartDate)
+		if err != nil {
+			return "", fmt.Errorf("invalid format for FromDate parameter.  Should be YYYY-MM-DD, but found %s", qp.StartDate)
+		}
+	}
+
+	if qp.EndDate != "" {
+		_, err := time.Parse("2006-01-02", qp.EndDate)
+		if err != nil {
+			return "", fmt.Errorf("invalid format for ToDate parameter.  Should be YYYY-MM-DD, but found %s", qp.EndDate)
+		}
+	}
+
+	s, err := query.Values(qp)
+	if err != nil {
+		return "", err
+	}
+
+	return s.Encode(), nil
+}
 
 // GetCalendarEvents returns an array of tasks based on one or more query parameters.
 func (conn *Connection) GetCalendarEvents(queryParams CalendarEventQueryParams) ([]*CalendarEvent, error) {
@@ -84,6 +120,23 @@ func (conn *Connection) GetCalendarEvents(queryParams CalendarEventQueryParams) 
 	}
 
 	events := new(CalendarEventsJSON)
+
+	err = json.Unmarshal(data, &events)
+	if err != nil {
+		return nil, err
+	}
+
+	return events.Events, nil
+}
+
+func (conn *Connection) GetCalendarEventsV3(queryParams CalendarEventQueryParamsV3) ([]*CalendarEventsV3JSON, error) {
+
+	data, err := conn.GetRequestV3("calendar/events", queryParams)
+	if err != nil {
+		return nil, err
+	}
+
+	events := new(CalendarEventsJSONV3)
 
 	err = json.Unmarshal(data, &events)
 	if err != nil {

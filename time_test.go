@@ -17,11 +17,11 @@ type TimeTestData struct {
 }
 
 func initTimeTestConnection(t *testing.T) *Connection {
-	conn, err := NewConnectionFromJSON("./testdata/apiConfigTestData1.json")
+	conn, err := NewConnection("water589meat", "foxtrotdivision", "", "v3")
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
-
+	//fmt.Print("Connection")
 	return conn
 }
 
@@ -36,7 +36,7 @@ func initTimeTestData(t *testing.T) *TimeTestData {
 	}
 
 	raw, _ := ioutil.ReadAll(f)
-
+	//fmt.Println(raw)
 	err = json.Unmarshal(raw, &testData)
 	if err != nil {
 		t.Fatalf(err.Error())
@@ -45,13 +45,59 @@ func initTimeTestData(t *testing.T) *TimeTestData {
 	return testData
 }
 
+func initTimeTestDataV3(t *testing.T) TimeQueryParamsV3 {
+
+	f, err := os.Open("./testdata/timeTestData.json")
+	defer f.Close()
+
+	if err != nil {
+		t.Errorf(err.Error())
+	}
+
+	data := new(TimeQueryParamsV3)
+
+	raw, err := ioutil.ReadAll(f)
+	if err != nil {
+		t.Errorf(err.Error())
+	}
+
+	err = json.Unmarshal(raw, &data)
+	if err != nil {
+		t.Errorf(err.Error())
+	}
+
+	//fmt.Println(data.ProjectID)
+
+	return *data
+}
+
+// func initTimeTestDataV3(t *testing.T) *TimeQueryParamsV3 {
+// 	testData := new(TimeQueryParamsV3)
+
+// 	f, err := os.Open("./testdata/timeTestData.json")
+// 	defer f.Close()
+
+// 	if err != nil {
+// 		t.Fatalf(err.Error())
+// 	}
+
+// 	raw, _ := ioutil.ReadAll(f)
+
+// 	err = json.Unmarshal(raw, &testData)
+// 	if err != nil {
+// 		t.Fatalf(err.Error())
+// 	}
+
+// 	return testData
+// }
+
 func TestGetTimeEntries(t *testing.T) {
 
 	conn := initTimeTestConnection(t)
 
 	var tests = []struct {
-		queryParams   *TimeQueryParams
-		want int
+		queryParams *TimeQueryParams
+		want        int
 	}{
 		{&TimeQueryParams{FromDate: "20210101", ToDate: "20210228", PageSize: "500"}, 218},
 		{&TimeQueryParams{FromDate: "20210304", ToDate: "20210304"}, 4},
@@ -66,7 +112,7 @@ func TestGetTimeEntries(t *testing.T) {
 			t.Errorf("expected %d time entries but got %d", v.want, len(entries))
 		}
 
-		for i:= 1; i < len(entries); i++ {
+		for i := 1; i < len(entries); i++ {
 
 			currentDate, err := time.Parse(TeamworkDateFormatLong, entries[i].Date)
 			if err != nil {
@@ -85,6 +131,25 @@ func TestGetTimeEntries(t *testing.T) {
 			}
 		}
 	}
+}
+
+func TestGetTimeEntriesV3(t *testing.T) {
+
+	conn := initTimeTestConnection(t)
+	data := initTimeTestDataV3(t)
+	//fmt.Println(data)
+	ret, err := conn.GetTimeEntriesV3(&data)
+	if err != nil {
+		t.Errorf(err.Error())
+	}
+
+	//UserID, MIN, TASKID
+	for _, u := range ret {
+		fmt.Printf(" %v \n", *u)
+	}
+	// fmt.Print(len(ret))
+	// fmt.Println(&ret)
+
 }
 
 func TestGetTimeEntriesByTask(t *testing.T) {
@@ -237,7 +302,6 @@ func TestPostTimeEntry(t *testing.T) {
 			}
 		}
 
-
 	}
 }
 
@@ -331,8 +395,8 @@ func TestTotalAndAvgHours(t *testing.T) {
 func TestDurationInDays(t *testing.T) {
 
 	var tests = []struct {
-		from 	string
-		days 	int
+		from string
+		days int
 	}{
 		{"20210101", 380},
 	}
@@ -354,7 +418,7 @@ func TestDurationInDays(t *testing.T) {
 			}
 
 			if days != i {
-				t.Errorf("expected diff of %d day(s) between %s and %s but got %d", i, 
+				t.Errorf("expected diff of %d day(s) between %s and %s but got %d", i,
 					start.Format(TeamworkDateFormatShort), d.Format(TeamworkDateFormatShort), days)
 			}
 		}
