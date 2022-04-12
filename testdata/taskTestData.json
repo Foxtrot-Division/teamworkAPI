@@ -1,0 +1,10 @@
+{
+    "task": {
+        "description": "Time Summary: ...",
+        "estimatedMinutes": 90,
+        "hasDeskTickets": true,
+        "name": "Jane Doe 3/31/2020",
+        "private": false,
+        "progress": 0
+    }
+}

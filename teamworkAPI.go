@@ -48,11 +48,21 @@ func (resMsg *GeneralResponse) ParseResponse(httpMethod string, rawRes []byte) e
 	return nil
 }
 
+
+// General TW API Configurations. This is not tied to any function(s). 
+type TWAPIConf struct {
+	APIKey         string `json:"apiKey"`
+	SiteName       string `json:"siteName"`
+	APIVersion     string `json:"apiVersion`
+	PreSignedURL   string `json:"preSignedUrl"`
+}
+
 // Connection stores info needed to establish Teamwork API Connection
 type Connection struct {
 	APIKey         string `json:"apiKey"`
 	SiteName       string `json:"siteName"`
 	DataPreference string `json:"dataPreference"`
+	APIVersion     string `json:"apiVersion`
 	URL            string
 	RequestURL     string
 }

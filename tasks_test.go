@@ -10,6 +10,10 @@ import (
 	"testing"
 )
 
+// type tw struct{
+// 	twAPIKey string `json:"tw_api_key"`
+// }
+
 type taskTestData struct {
 	UserIDs       string `json:"users"`
 	From          string `json:"from"`
@@ -18,10 +22,12 @@ type taskTestData struct {
 	ExampleTaskID string `json:"exampleTaskID"`
 	Include       string `json:"include"`
 }
+
 type parentTaskJson struct {
 	ID   int    `json:"id"`
 	Type string `json:"type"`
 }
+
 type CreateTaskTestData struct {
 	Description      string         `json:"description"`
 	EstimatedMinutes int            `json:"estimatedMinutes"`
@@ -35,12 +41,32 @@ type taskTestDataJSON struct {
 }
 
 func initTaskTestConnectionV3(t *testing.T) *Connection {
+	
+	f, err := os.Open("./testdata/tw_api_conf.json")
+	defer f.Close()
+
+	if err != nil {
+		t.Errorf(err.Error())
+	}
+
+	raw, err := ioutil.ReadAll(f)
+	if err != nil {
+		t.Errorf(err.Error())
+	}
+
+	data := new(TWAPIConf)
+
+	err = json.Unmarshal(raw, &data)
+	if err != nil {
+		t.Errorf(err.Error())
+	}
+
 	//	conn, err := NewConnectionFromJSON("./testdata/apiConfigTestData1.json")
-	conn, err := NewConnection("twp_UtkI6MKeqjAgnW9hUtM8col7WTf7", "foxtrotdivision", "", "v3")
+	conn, err := NewConnection(data.APIKey, data.SiteName, "", data.APIVersion)
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
-
+	
 	return conn
 }
 
@@ -234,7 +260,6 @@ func TestGetTasks(t *testing.T) {
 }
 func TestCreateTask(t *testing.T) {
 	conn := initTaskTestConnectionV3(t)
-
 	testData := loadTaskTestDataV3(t)
 
 	_, err := conn.PostTask("1781185", testData)
@@ -248,7 +273,6 @@ func TestCreateTask(t *testing.T) {
 
 func TestCreateSubTask(t *testing.T) {
 	conn := initTaskTestConnectionV3(t)
-
 	testData := loadTaskTestDataV3(t)
 
 	ret, err := conn.PostTask("1781185", testData)
