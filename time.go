@@ -195,8 +195,6 @@ func (conn *Connection) GetTimeEntries(queryParams *TimeQueryParams) ([]*TimeEnt
 
 func (conn *Connection) GetTimeEntriesV3(queryParams *TimeQueryParamsV3) ([]*TimeLogV3, error) {
 
-	fmt.Println(queryParams)
-	
 	data, err := conn.GetRequestV3("time", queryParams)
 	if err != nil {
 		return nil, err
