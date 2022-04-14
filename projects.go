@@ -21,6 +21,15 @@ type ProjectsJSON struct {
 	Projects []*Project `json:"projects"`
 }
 
+type ProjectV3 struct{
+	Project ProjectDataV3 `json:"project"` 
+}
+
+type ProjectDataV3 struct {
+	ID          int 	`json:"id"`
+	Name    	string 	`json:"name"`
+}
+
 // ProjectQueryParams defines valid query parameters for this resource.
 type ProjectQueryParams struct {
 	CompanyID   string `url:"companyId,omitempty"`
@@ -59,4 +68,22 @@ func (conn *Connection) GetProjects(queryParams *ProjectQueryParams) ([]*Project
 	}
 
 	return projects.Projects, nil
+}
+
+// GetProjects retrieve projects specified by queryParams.
+func (conn *Connection) GetProjectV3(projectId string) (*ProjectV3, error) {
+
+	data, err := conn.GetRequestV3("projects/" + projectId, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	project := new(ProjectV3)
+	
+	err = json.Unmarshal(data, &project)
+	if err != nil {
+		return nil, err
+	}
+
+	return project, nil
 }
