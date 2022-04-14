@@ -215,7 +215,6 @@ func (conn *Connection) GetRequestV3(endpoint string, params QueryParamsV3) ([]b
 	}
 
 	conn.RequestURL = conn.URL + endpoint + "." + conn.DataPreference + queryParams
-	fmt.Println(conn.RequestURL)
 
 	req, err := http.NewRequest("GET", conn.RequestURL, nil)
 
@@ -243,7 +242,6 @@ func (conn *Connection) PatchRequest(endpoint string, data []byte, resHandler Re
 
 	client := &http.Client{}
 	req, err := http.NewRequest("PATCH", conn.URL+endpoint+".json", bytes.NewBuffer(data))
-	fmt.Println(req)
 	req.Header.Add("Authorization", "Basic "+basicAuth(conn.APIKey))
 	req.Header.Set("Content-Type", "application/json")
 
