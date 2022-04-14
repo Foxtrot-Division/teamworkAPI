@@ -67,16 +67,22 @@ type TimeQueryParams struct {
 	ToDate   string `url:"todate,omitempty"`
 	PageSize string `url:"pageSize,omitempty"`
 }
+
 type TimeQueryParamsV3 struct {
-	EndDate   string `url:"endDate,omitempty"`
-	StartDate string `url:"startDate,omitempty"`
-	ProjectID string `url:"projectId,omitempty"`
+	EndDate            string `url:"endDate,omitempty"`
+	StartDate          string `url:"startDate,omitempty"`
+	AssignedToUserIds  []string `url:"assignedToUserIds,omitempty"`
+	ProjectID          string `url:"projectId,omitempty"`
+	PageSize 		   string `url:"pageSize,omitempty"`
 }
+
 type TimeLogV3 struct {
 	ID      int `json:"userId"`
 	Minutes int `json:"minutes"`
 	TaskID  int `json:"taskId"`
+
 }
+
 type TimeLogJSON struct {
 	TimeLog []*TimeLogV3 `json:"timelogs"`
 }
@@ -160,7 +166,7 @@ func (qp *TimeQueryParamsV3) FormatQueryParamsV3() (string, error) {
 	if qp.EndDate != "" {
 		_, err := time.Parse("2006-01-02", qp.EndDate)
 		if err != nil {
-			return "", fmt.Errorf("invalid format for FromDate parameter.  Should be YYYYMMDD, but found %s", qp.EndDate)
+			return "", fmt.Errorf("invalid format for FromDate parameter.  Should be YYYY-MM-DD, but found %s", qp.EndDate)
 		}
 	}
 	s, err := query.Values(qp)
@@ -188,10 +194,13 @@ func (conn *Connection) GetTimeEntries(queryParams *TimeQueryParams) ([]*TimeEnt
 
 func (conn *Connection) GetTimeEntriesV3(queryParams *TimeQueryParamsV3) ([]*TimeLogV3, error) {
 
+	fmt.Println(queryParams)
+	
 	data, err := conn.GetRequestV3("time", queryParams)
 	if err != nil {
 		return nil, err
 	}
+
 	entries := new(TimeLogJSON)
 	err = json.Unmarshal(data, &entries)
 	if err != nil {

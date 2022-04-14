@@ -50,11 +50,13 @@ type CalendarEventQueryParams struct {
 	To          string `url:"endDate,omitempty"`
 	EventTypeID string `url:"eventTypeId,omitempty"`
 }
+
 type CalendarEventQueryParamsV3 struct {
 	EndDate   string `url:"endDate,omitempty"`
 	StartDate string `url:"startDate,omitempty"`
 	ProjectID string `url:"projectId,omitempty"`
 }
+
 type CalendarEventsV3JSON struct {
 	AttendingUserIds []int  `url:"attendingUserIds,omitempty"`
 	StartDate        string `url:"startDate,omitempty"`

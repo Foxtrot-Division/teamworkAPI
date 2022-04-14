@@ -8,6 +8,7 @@ import (
 	"reflect"
 	"strconv"
 	"testing"
+	"fmt"
 )
 
 // type tw struct{
@@ -73,6 +74,30 @@ func initTaskTestConnectionV3(t *testing.T) *Connection {
 func loadTaskTestDataV3(t *testing.T) TaskV3JSON {
 
 	f, err := os.Open("./testdata/taskTestData.json")
+	defer f.Close()
+
+	if err != nil {
+		t.Errorf(err.Error())
+	}
+
+	data := new(TaskV3JSON)
+
+	raw, err := ioutil.ReadAll(f)
+	if err != nil {
+		t.Errorf(err.Error())
+	}
+
+	err = json.Unmarshal(raw, &data)
+	if err != nil {
+		t.Errorf(err.Error())
+	}
+
+	return *data
+}
+
+func loadSubTaskTestDataV3(t *testing.T) TaskV3JSON {
+
+	f, err := os.Open("./testdata/subTaskTestData.json")
 	defer f.Close()
 
 	if err != nil {
@@ -234,9 +259,7 @@ func TestGetTaskByID(t *testing.T) {
 }
 
 func TestGetTasks(t *testing.T) {
-
 	testData := loadTaskTestData(t)
-
 	conn := initTaskTestConnection(t)
 
 	for _, v := range testData {
@@ -258,14 +281,70 @@ func TestGetTasks(t *testing.T) {
 		}
 	}
 }
+
+
+func TestAttachFile(t *testing.T){
+	conn := initTaskTestConnectionV3(t)
+
+	f, err := os.Open("testdata/tw_api_conf.json")
+	defer f.Close()
+
+	if err != nil {
+		t.Error(err)
+	}
+
+	data := new(TWAPIConf)
+
+	raw, err := ioutil.ReadAll(f)
+	if err != nil {
+		t.Error(err)
+	}
+
+	err = json.Unmarshal(raw, &data)
+	if err != nil {
+		t.Error(err)
+	}
+
+	fc, err := NewFileConnection(data.SiteName, "Test_PDF_New.pdf", "testdata/Test_PDF_New.pdf", data.APIKey)
+	if err != nil{
+		t.Error(err)
+	}
+
+	fileID, err := fc.PutFile()
+	if err != nil{
+		t.Error(err)
+	}
+
+	jsonString := fmt.Sprintf(`{"attachments": {"pendingFiles": [{"categoryId": 0, "reference": "%v"}]}}`,fileID)
+	//jsonString := fmt.Sprintf(`{"attachments":{"pendingFiles":[{"categoryId":0, "reference":"%v"}]}}`,"tf_341a8e1f-c840-440e-8891-ff3c70957643")
+
+	//data := new(TaskPatchV3JSON)
+	var taskPatchV3JSON TaskPatchV3JSON	
+
+	err = json.Unmarshal([]byte(jsonString), &taskPatchV3JSON)
+	if err != nil {
+		t.Error(err)
+	}
+
+	ret, err := conn.PatchTask("24040057", taskPatchV3JSON)
+	if err != nil{
+		t.Error(err)
+	}
+
+	if ret == 0{
+		t.Errorf("unknown error attaching file to task")
+	}
+}
+
 func TestCreateTask(t *testing.T) {
 	conn := initTaskTestConnectionV3(t)
 	testData := loadTaskTestDataV3(t)
 
+	fmt.Println(testData)
+
 	_, err := conn.PostTask("1781185", testData)
 	if err != nil {
 		t.Errorf(err.Error())
-
 	}
 	//fmt.Println(ret)
 
@@ -273,7 +352,7 @@ func TestCreateTask(t *testing.T) {
 
 func TestCreateSubTask(t *testing.T) {
 	conn := initTaskTestConnectionV3(t)
-	testData := loadTaskTestDataV3(t)
+	testData := loadSubTaskTestDataV3(t)
 
 	ret, err := conn.PostTask("1781185", testData)
 	if err != nil {

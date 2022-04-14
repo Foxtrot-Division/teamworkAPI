@@ -43,10 +43,12 @@ type TasksJSON struct {
 }
 
 type TaskV3 struct {
-	Description      string `json:"description"`
-	EstimatedMinutes int    `json:"estimatedMinutes"`
-	Name             string `json:"name"`
-	Private          bool   `json:"private"`
+	Description      string             `json:"description"`
+	EstimatedMinutes int                `json:"estimatedMinutes"`
+	Name             string             `json:"name"`
+	Private          bool               `json:"private"`
+	ParentTaskID     int                `json:"parentTaskI"`
+	Assignees        map[string][]int64 `json:"assignees"`
 }
 
 type TaskV3JSON struct {
@@ -55,6 +57,19 @@ type TaskV3JSON struct {
 
 type TaskResponseV3 struct {
 	ID int `json:"id"`
+}
+
+type TaskPatchV3JSON struct{
+	Attachments TaskPatchAttachments `json:"attachments"`
+}
+
+type TaskPatchAttachments struct{
+	PendingFiles []TaskPatchPendingFiles `json:"pendingFiles"`
+}
+
+type TaskPatchPendingFiles struct{
+	CategoryId int `json:"categoryId"`
+	Reference string `json:"reference"`
 }
 
 // TaskResponseHandlerV3 models a http response for a Task operation using version 3 of teamwork api.
@@ -156,7 +171,7 @@ func (qp TaskQueryParams) FormatQueryParams() (string, error) {
 
 	return params.Encode(), nil
 }
-
+ 
 // GetTaskByID retrieves a specific task based on ID.
 func (conn *Connection) GetTaskByID(ID string) (*Task, error) {
 
@@ -209,6 +224,27 @@ func (conn *Connection) GetTasks(queryParams TaskQueryParams) ([]*Task, error) {
 	return tasks.Tasks, nil
 }
 
+
+func (conn *Connection) PatchTask(taskID string, putData TaskPatchV3JSON)(int,error){
+	handler := new(TaskResponseHandlerV3)
+
+	b, err := json.Marshal(putData)
+	if err != nil {
+		return 0, err
+	}
+	
+	err = conn.PatchRequest("tasks/"+taskID, b, handler)
+	if err != nil {
+		return 0, err
+	}
+
+	if err != nil {
+		return 0, err
+	}
+
+	return handler.Task.ID, nil
+}
+
 // Creates a Task given the task list Id
 func (conn *Connection) PostTask(taskListID string, postData TaskV3JSON) (int, error) {
 
@@ -234,7 +270,7 @@ func (conn *Connection) PostTask(taskListID string, postData TaskV3JSON) (int, e
 
 //Creates a subtask given the parent's task ID
 func (conn *Connection) PostSubTask(parentTaskID string, postData TaskV3JSON) (int, error) {
-
+	
 	handler := new(TaskResponseHandlerV3)
 	b, err := json.Marshal(postData)
 	if err != nil {

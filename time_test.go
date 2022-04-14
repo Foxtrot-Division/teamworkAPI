@@ -25,6 +25,36 @@ func initTimeTestConnection(t *testing.T) *Connection {
 	return conn
 }
 
+func initTimeTestConnectionV3(t *testing.T) *Connection {
+	
+	f, err := os.Open("./testdata/tw_api_conf.json")
+	defer f.Close()
+
+	if err != nil {
+		t.Errorf(err.Error())
+	}
+
+	raw, err := ioutil.ReadAll(f)
+	if err != nil {
+		t.Errorf(err.Error())
+	}
+
+	data := new(TWAPIConf)
+
+	err = json.Unmarshal(raw, &data)
+	if err != nil {
+		t.Errorf(err.Error())
+	}
+
+	//	conn, err := NewConnectionFromJSON("./testdata/apiConfigTestData1.json")
+	conn, err := NewConnection(data.APIKey, data.SiteName, "", data.APIVersion)
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+	
+	return conn
+}
+
 func initTimeTestData(t *testing.T) *TimeTestData {
 	testData := new(TimeTestData)
 
@@ -135,10 +165,16 @@ func TestGetTimeEntries(t *testing.T) {
 
 func TestGetTimeEntriesV3(t *testing.T) {
 
-	conn := initTimeTestConnection(t)
-	data := initTimeTestDataV3(t)
-	//fmt.Println(data)
-	ret, err := conn.GetTimeEntriesV3(&data)
+	conn := initTimeTestConnectionV3(t)
+
+	timeQueryParamsV3 := TimeQueryParamsV3{
+		AssignedToUserIds: []string{"266242"},
+		EndDate: "2022-04-01",
+		StartDate: "2022-03-18",
+		PageSize: "500",
+	}
+
+	ret, err := conn.GetTimeEntriesV3(&timeQueryParamsV3)
 	if err != nil {
 		t.Errorf(err.Error())
 	}
@@ -149,7 +185,6 @@ func TestGetTimeEntriesV3(t *testing.T) {
 	}
 	// fmt.Print(len(ret))
 	// fmt.Println(&ret)
-
 }
 
 func TestGetTimeEntriesByTask(t *testing.T) {
