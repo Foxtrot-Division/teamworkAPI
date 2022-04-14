@@ -77,10 +77,11 @@ type TimeQueryParamsV3 struct {
 }
 
 type TimeLogV3 struct {
-	ID      int `json:"userId"`
-	Minutes int `json:"minutes"`
-	TaskID  int `json:"taskId"`
-
+	UserId     int     `json:"userId"`
+	Minutes    int     `json:"minutes"`
+	TaskID     int     `json:"taskId"`
+	ProjectID  int     `json:"projectId"`
+	TimeLogged string  `json:"timeLogged"`
 }
 
 type TimeLogJSON struct {
