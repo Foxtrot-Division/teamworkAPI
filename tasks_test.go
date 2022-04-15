@@ -352,20 +352,28 @@ func TestCreateTask(t *testing.T) {
 
 func TestCreateSubTask(t *testing.T) {
 	conn := initTaskTestConnectionV3(t)
-	testData := loadSubTaskTestDataV3(t)
+//	testData := loadSubTaskTestDataV3(t)
 
-	ret, err := conn.PostTask("1781185", testData)
+	//taskJSON := fmt.Sprintf(`{"task": {"name": "Verify Time Logged/%v %v, %v","description": "%v","parentTaskId": %v,"assignees": {"userIds": [%v]}}}`,"2022-04-01", "Darth", "Vader", "TEST", 24040057, 179618)
+
+	testJSON := `{"task": {"name": "Verify Time Logged/2022-04-01 Matt, Shilinski","description": "TEST","parentTaskId": 24050618,"assignees": {"userIds": [179618]}}}`
+
+	var taskJSONData TaskV3JSON
+
+	err := json.Unmarshal([]byte(taskJSON), &taskJSONData)
 	if err != nil {
-		t.Errorf(err.Error())
-
+		t.Error(err)
 	}
-	strID := strconv.Itoa(ret)
 
-	testData.Task.Name = "SubTask"
-	_, err = conn.PostSubTask(strID, testData)
+	fmt.Println(taskJSONData)
+
+	ret, err = conn.PostSubTask("1781185", taskJSONData)
 	if err != nil {
 		t.Errorf(err.Error())
+	}
 
+	if ret == 0{
+		t.Error("unknown error")
 	}
 	//	fmt.Println(postSubTask)
 
