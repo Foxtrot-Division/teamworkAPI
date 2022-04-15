@@ -47,7 +47,7 @@ type TaskV3 struct {
 	EstimatedMinutes int                `json:"estimatedMinutes"`
 	Name             string             `json:"name"`
 	Private          bool               `json:"private"`
-	ParentTaskID     int                `json:"parentTaskI"`
+	ParentTaskID     int                `json:"parentTaskId"`
 	Assignees        map[string][]int64 `json:"assignees"`
 }
 
