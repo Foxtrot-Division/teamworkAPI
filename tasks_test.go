@@ -360,14 +360,14 @@ func TestCreateSubTask(t *testing.T) {
 
 	var taskJSONData TaskV3JSON
 
-	err := json.Unmarshal([]byte(taskJSON), &taskJSONData)
+	err := json.Unmarshal([]byte(testJSON), &taskJSONData)
 	if err != nil {
 		t.Error(err)
 	}
 
 	fmt.Println(taskJSONData)
 
-	ret, err = conn.PostSubTask("1781185", taskJSONData)
+	ret, err := conn.PostSubTask("1781185", taskJSONData)
 	if err != nil {
 		t.Errorf(err.Error())
 	}

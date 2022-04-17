@@ -3,6 +3,9 @@ package teamworkapi
 import (
 	"fmt"
 	"testing"
+	"os"
+	"io/ioutil"
+	"encoding/json"
 )
 
 func initCalendarEventTestConnection(t *testing.T) *Connection {
@@ -14,12 +17,33 @@ func initCalendarEventTestConnection(t *testing.T) *Connection {
 	return conn
 }
 
-func initCalenderTestConnection(t *testing.T) *Connection {
-	conn, err := NewConnection("water589meat", "foxtrotdivision", "", "v3")
+func initCalendarConnectionV3(t *testing.T) *Connection {
+
+	f, err := os.Open("./testdata/tw_api_conf.json")
+	defer f.Close()
+
+	if err != nil {
+		t.Errorf(err.Error())
+	}
+
+	raw, err := ioutil.ReadAll(f)
+	if err != nil {
+		t.Errorf(err.Error())
+	}
+
+	data := new(TWAPIConf)
+
+	err = json.Unmarshal(raw, &data)
+	if err != nil {
+		t.Errorf(err.Error())
+	}
+
+	//	conn, err := NewConnectionFromJSON("./testdata/apiConfigTestData1.json")
+	conn, err := NewConnection(data.APIKey, data.SiteName, "", data.APIVersion)
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
-	//fmt.Print("Connection")
+	
 	return conn
 }
 
@@ -43,11 +67,12 @@ func TestGetCalendarEvents(t *testing.T) {
 
 func TestGetCalendarEventsV3(t *testing.T) {
 
-	conn := initCalenderTestConnection(t)
+	conn := initCalendarConnectionV3(t)
 
 	q := CalendarEventQueryParamsV3{
 		StartDate: "2021-01-01",
 		EndDate:   "2022-01-01",
+		PageSize: "1000",
 	}
 
 	events, err := conn.GetCalendarEventsV3(q)
@@ -62,6 +87,9 @@ func TestGetCalendarEventsV3(t *testing.T) {
 	for _, u := range events {
 		fmt.Printf("Start Date: %v, ", *&u.StartDate)
 		fmt.Printf("End Date: %v, ", *&u.EndDate)
+		fmt.Printf("Type ID: %v, ", *&u.TypeId)
+		fmt.Printf("Owner User ID: %v, ", *&u.OwnerUserId)
+		fmt.Printf("All Day: %v, ", *&u.AllDay)
 		fmt.Printf("Attending User ID: %v \n", *&u.AttendingUserIds)
 
 	}

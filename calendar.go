@@ -55,12 +55,16 @@ type CalendarEventQueryParamsV3 struct {
 	EndDate   string `url:"endDate,omitempty"`
 	StartDate string `url:"startDate,omitempty"`
 	ProjectID string `url:"projectId,omitempty"`
+	PageSize string  `url:"pageSize,omitempty"`
 }
 
 type CalendarEventsV3JSON struct {
-	AttendingUserIds []int  `url:"attendingUserIds,omitempty"`
-	StartDate        string `url:"startDate,omitempty"`
-	EndDate          string `url:"endDate,omitempty"`
+	AttendingUserIds []int  `json:"attendingUserIds"`
+	TypeId           int    `json:"typeId"`
+	OwnerUserId      int    `json:"ownerUserId"`            
+	StartDate        string `json:"startDate"`
+	EndDate          string `json:"endDate"`
+	AllDay  		 bool   `json:"allDay"`       
 }
 
 // FormatQueryParams formats query parameters for this resource.
