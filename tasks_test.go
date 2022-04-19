@@ -216,6 +216,19 @@ func TestGetTaskByIDV3(t *testing.T){
 	fmt.Println(task.Task.Attachments[0])
 }
 
+func TestGetSubtaskV3(t *testing.T){
+	taskId := "24059040"
+	conn := initTaskTestConnectionV3(t)
+
+	//task, err := conn.GetTaskByID(v.ExampleTaskID)
+	task, err := conn.GetSubtaskV3(taskId)
+	if err != nil {
+		t.Errorf(err.Error())
+	}
+
+	fmt.Println(task)
+}
+
 func TestGetTaskByID(t *testing.T) {
 
 	testData := loadTaskTestData(t)

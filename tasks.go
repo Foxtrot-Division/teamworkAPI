@@ -72,12 +72,17 @@ type TaskV3 struct {
 	Assignees        map[string][]int64 `json:"assignees"`
 }
 
+type TasksV3Res struct {
+	Tasks []TaskRes `json:"tasks"`
+}
+
 type TaskV3JSON struct {
 	Task TaskV3 `json:"task"`
 }
 
-type TaskResponseV3 struct {
-	ID int `json:"id"`
+type TaskRes struct {
+	Id int `json:"id"`
+	AssigneeUserIds []int `json:"assigneeUserIds"`
 }
 
 type TaskPatchV3JSON struct{
@@ -98,6 +103,17 @@ type TaskResponseHandlerV3 struct {
 	Status  string         `json:"STATUS"`
 	Message string         `json:"MESSAGE"`
 	Task    TaskResponseV3 `json:"task`
+}
+
+type TaskResponseV3 struct {
+	ID int `json:"id"`
+}
+
+
+type TasksV3 struct {
+	Status   string           `json:"STATUS"`
+	Message  string           `json:"MESSAGE"`
+	Tasks    []TaskResponseV3 `json:"tasks`
 }
 
 // TimeTotals summarizes actual and estimated hours for a specific task.
@@ -140,6 +156,7 @@ type TaskQueryParams struct {
 	CompletedBefore  string `url:"completedBefore"`
 	CompletedAfter   string `url:"completedAfter"`
 }
+
 
 func (resMsg *TaskResponseHandlerV3) ParseResponse(httpMethod string, rawRes []byte) error {
 	// b := string(rawRes)
@@ -320,6 +337,24 @@ func (conn *Connection) PostTask(taskListID string, postData TaskV3JSON) (int, e
 	}
 
 	return handler.Task.ID, nil
+}
+
+func (conn *Connection) GetSubtaskV3(parentTaskID string)(*TasksV3Res, error){
+
+	data, err := conn.GetRequest("tasks/" + parentTaskID + "/subtasks", nil)
+	if err != nil {
+		return nil, err
+	}
+
+
+	tasks := new(TasksV3Res)
+
+	err = json.Unmarshal(data, &tasks)
+	if err != nil {
+		return nil, err
+	}
+
+	return tasks, nil
 }
 
 //Creates a subtask given the parent's task ID
