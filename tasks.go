@@ -11,6 +11,26 @@ import (
 	"github.com/google/go-querystring/query"
 )
 
+// Task models a specific task in Teamwork for Version 3. Refer to TW API docs to add additonal fields as requried.
+type TaskVersion3 struct {
+	Task struct{
+		Id				 int				`json:"id"`
+		Description      string             `json:"description"`
+		EstimatedMinutes int                `json:"estimatedMinutes"`
+		Name             string             `json:"name"`
+		Private          bool               `json:"private"`
+		ParentTaskID     int                `json:"parentTaskId"`
+		Assigness []struct {
+			ID int `json:"id"`
+			Type string `json:"type"`
+		} `json:"assignees"`
+		Attachments []struct {
+			ID int `json:"id"`
+			Type string `json:"type"`
+		} `json:"attachments"`
+	} `json:"task"`
+}
+
 // Task models a specific task in Teamwork.
 type Task struct {
 	ID             int    `json:"id"`
@@ -43,6 +63,7 @@ type TasksJSON struct {
 }
 
 type TaskV3 struct {
+	Id				 int				`json:"id"`
 	Description      string             `json:"description"`
 	EstimatedMinutes int                `json:"estimatedMinutes"`
 	Name             string             `json:"name"`
@@ -170,6 +191,39 @@ func (qp TaskQueryParams) FormatQueryParams() (string, error) {
 	}
 
 	return params.Encode(), nil
+}
+
+// GetTaskByID retrieves a specific task based on ID.
+func (conn *Connection) GetTaskByIDV3(ID string) (*TaskVersion3, error) {
+
+	_, err := strconv.Atoi(ID)
+	if err != nil {
+		if ID == "" {
+			return nil, fmt.Errorf("missing required parameter(s): ID")
+		}
+		return nil, fmt.Errorf("invalid value (%s) for ID", ID)
+	}
+
+	endpoint := "tasks/" + ID
+	data, err := conn.GetRequest(endpoint, nil)
+
+	if err != nil {
+		return nil, err
+	}
+
+	t := new(TaskVersion3)
+
+	err = json.Unmarshal(data, &t)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if t.Task.Id == 0 {
+		return nil, fmt.Errorf("failed to retrieve task with ID (%s)", ID)
+	}
+	
+	return t, nil
 }
  
 // GetTaskByID retrieves a specific task based on ID.

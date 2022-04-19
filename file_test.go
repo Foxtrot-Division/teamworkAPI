@@ -9,49 +9,57 @@ import(
 	//"strconv"
 )
 
+func initFileTestConnectionV3(t *testing.T) *Connection {
 
-// func TestGetPreSignedURL(t *testing.T){
+	f, err := os.Open("./testdata/tw_api_conf.json")
+	defer f.Close()
 
-// 	f, err := os.Open("testdata/tw_api_conf.json")
-// 	defer f.Close()
+	if err != nil {
+		t.Errorf(err.Error())
+	}
 
-// 	if err != nil {
-// 		t.Errorf(err.Error())
-// 	}
+	raw, err := ioutil.ReadAll(f)
+	if err != nil {
+		t.Errorf(err.Error())
+	}
 
-// 	data := new(TWAPIConf)
+	data := new(TWAPIConf)
 
-// 	raw, err := ioutil.ReadAll(f)
-// 	if err != nil {
-// 		t.Errorf(err.Error())
-// 	}
+	err = json.Unmarshal(raw, &data)
+	if err != nil {
+		t.Errorf(err.Error())
+	}
 
-// 	err = json.Unmarshal(raw, &data)
-// 	if err != nil {
-// 		t.Errorf(err.Error())
-// 	}
+	//	conn, err := NewConnectionFromJSON("./testdata/apiConfigTestData1.json")
+	conn, err := NewConnection(data.APIKey, data.SiteName, "", data.APIVersion)
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
 
-// 	fi, err := os.Stat("testdata/Test_PDF_New.pdf")
-//     if err != nil {
-//         t.Error(err)
-// 	}
+	return conn
+}
 
-// 	size := strconv.FormatInt(fi.Size(), 10)
+func TestPatchFile(t *testing.T){
 
-// 	fc, err := NewFileConnection(data.SiteName, "Test_PDF_New.pdf", size, "testdata/Test_PDF_New.pdf", data.APIKey)
-// 	if err != nil{
-// 		t.Error(err)
-// 	}
+	conn := initTaskTestConnectionV3(t)
+	jsonString := `{"file": {"categoryId": 858993}}`
+	
+	 var file FileVersion3
 
-// 	preSignedRes, err := fc.GetPreSignedData()
-// 	if err != nil{
-// 		t.Error(err)
-// 	}
+	err := json.Unmarshal([]byte(jsonString), &file)
+	if err != nil {
+		t.Error(err)
+	}
 
-// 	fmt.Println(preSignedRes)
-// }
+	ret, err := conn.PatchFile("6673096", file)
+	if err != nil{
+		t.Error(err)
+	}
 
-func TestPutFile(t*testing.T){
+	fmt.Println(ret)
+}
+
+func TestPutFile(t* testing.T){
 	f, err := os.Open("testdata/tw_api_conf.json")
 	defer f.Close()
 

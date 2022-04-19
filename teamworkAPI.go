@@ -245,6 +245,8 @@ func (conn *Connection) PatchRequest(endpoint string, data []byte, resHandler Re
 	req.Header.Add("Authorization", "Basic "+basicAuth(conn.APIKey))
 	req.Header.Set("Content-Type", "application/json")
 
+	fmt.Println(req)
+
 	resp, err := client.Do(req)
 	if err != nil {
 		return err

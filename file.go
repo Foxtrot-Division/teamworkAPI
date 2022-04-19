@@ -11,7 +11,16 @@ import(
 	"bytes"
 	"os"
 	"github.com/imroc/req/v3"
+	"encoding/json"
 )
+
+//models a file from TW, add addional fields as needed
+type FileVersion3 struct{
+	File struct{
+		Id         int `json:"id,omitempty"`
+		CategoryId int `json:"categoryId,omitempty"`
+	} `json:"file"`
+}
 
 type FileConnection struct{
 	SiteName        string
@@ -25,6 +34,54 @@ type PreSignedRes struct{
 	URL string `json:"url"`
 }
 
+type FileResponse struct{
+	Id         int `json:'id'`
+	CategoryId int `json:'categoryId'`
+}
+
+type FileResponseHandlerV3 struct {
+	Status  string         `json:"STATUS"`
+	Message string         `json:"MESSAGE"`
+	File    FileResponse   `json:"file`
+}
+// // TaskResponseHandlerV3 models a http response for a Task operation using version 3 of teamwork api.
+// type FileResponseHandlerV3 struct {
+// 	File FileVersion3 `json:"file`
+// }
+
+// type FileResponseV3 struct {
+// 	ID int `json:"id"`
+// }
+
+
+func (resMsg *FileResponseHandlerV3) ParseResponse(httpMethod string, rawRes []byte) error {
+	// b := string(rawRes)
+	// fmt.Println(b)
+
+	err := json.Unmarshal(rawRes, &resMsg)
+	if err != nil {
+		return err
+	}
+	// fmt.Println("REPOSNE")
+	// fmt.Println(resMsg.Response)
+
+	if resMsg.Status == "Error" {
+		return fmt.Errorf("received ERROR response: %s", resMsg.Message)
+	}
+
+	switch httpMethod {
+	case http.MethodPost:
+		// ABC€
+
+		if resMsg.File.Id == 0 {
+			return fmt.Errorf("no task id returned for Task Post request ")
+		}
+	}
+
+	return nil
+}
+
+//Used for initially uploading a file
 func NewFileConnection(SiteName string, FileName string, FullPathToFile string, APIKey string)(*FileConnection, error){
 
 	if len(strings.TrimSpace(SiteName)) == 0{
@@ -52,6 +109,7 @@ func NewFileConnection(SiteName string, FileName string, FullPathToFile string, 
 
 	return fc, nil
 } 
+
 
 //Specific Get Request to return the unique ref ID for said file and unique URL to PUT file to
 func getPreSignedData(SiteName string, FileName string, ContentLength string, APIKey string) (*PreSignedRes, error){
@@ -136,4 +194,25 @@ func (fc *FileConnection) PutFile() (string, error){
 	}
 
 	return preSignedData.Ref, nil
+}
+
+func (conn *Connection) PatchFile(fileID string, patchData FileVersion3) (*FileResponseHandlerV3, error) {
+
+	handler := new(FileResponseHandlerV3)
+
+	b, err := json.Marshal(patchData)
+	if err != nil {
+		return nil, err
+	}
+
+	err = conn.PatchRequest("files/"+fileID, b, handler)
+	if err != nil {
+		return nil, err
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	return handler, nil
 }
