@@ -295,7 +295,6 @@ func TestGetTasks(t *testing.T) {
 	}
 }
 
-
 func TestAttachFile(t *testing.T){
 	conn := initTaskTestConnectionV3(t)
 
