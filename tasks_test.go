@@ -363,11 +363,19 @@ func TestAttachFile(t *testing.T){
 
 func TestCreateTask(t *testing.T) {
 	conn := initTaskTestConnectionV3(t)
-	testData := loadTaskTestDataV3(t)
+//	testData := loadTaskTestDataV3(t)
 
-	fmt.Println(testData)
+//	fmt.Println(testData)
 
-	_, err := conn.PostTask("1781185", testData)
+	taskJSON := `{"task": {"name": "Verify Time Logged/2022-04-01 Matt, Shilinski","dueAt":"2022-04-01", "startAt":"2022-03-29", "description": "TEST","assignees": {"userIds": [179618]}}}`
+	var taskJSONData TaskV3JSON
+
+	err := json.Unmarshal([]byte(taskJSON), &taskJSONData)
+	if err != nil {
+		t.Error(err)
+	}
+
+	_, err = conn.PostTask("1781185", taskJSONData)
 	if err != nil {
 		t.Errorf(err.Error())
 	}

@@ -70,6 +70,8 @@ type TaskV3 struct {
 	Private          bool               `json:"private"`
 	ParentTaskID     int                `json:"parentTaskId"`
 	Assignees        map[string][]int64 `json:"assignees"`
+	DueAt            string             `json:"dueAt"`
+	StartAt          string             `json:"startAt"`
 }
 
 type TasksV3Res struct {
