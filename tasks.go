@@ -13,19 +13,20 @@ import (
 
 // Task models a specific task in Teamwork for Version 3. Refer to TW API docs to add additonal fields as requried.
 type TaskVersion3 struct {
-	Task struct{
-		Id				 int				`json:"id"`
-		Description      string             `json:"description"`
-		EstimatedMinutes int                `json:"estimatedMinutes"`
-		Name             string             `json:"name"`
-		Private          bool               `json:"private"`
-		ParentTaskID     int                `json:"parentTaskId"`
-		Assigness []struct {
-			ID int `json:"id"`
+	Task struct {
+		Id               int    `json:"id"`
+		Description      string `json:"description"`
+		Status           string `json:"status"`
+		EstimatedMinutes int    `json:"estimatedMinutes"`
+		Name             string `json:"name"`
+		Private          bool   `json:"private"`
+		ParentTaskID     int    `json:"parentTaskId"`
+		Assigness        []struct {
+			ID   int    `json:"id"`
 			Type string `json:"type"`
 		} `json:"assignees"`
 		Attachments []struct {
-			ID int `json:"id"`
+			ID   int    `json:"id"`
 			Type string `json:"type"`
 		} `json:"attachments"`
 	} `json:"task"`
@@ -63,7 +64,7 @@ type TasksJSON struct {
 }
 
 type TaskV3 struct {
-	Id				 int				`json:"id"`
+	Id               int                `json:"id"`
 	Description      string             `json:"description"`
 	EstimatedMinutes int                `json:"estimatedMinutes"`
 	Name             string             `json:"name"`
@@ -83,24 +84,24 @@ type TaskV3JSON struct {
 }
 
 type TaskRes struct {
-	Id int `json:"id"`
+	Id              int   `json:"id"`
 	AssigneeUserIds []int `json:"assigneeUserIds"`
 }
 
-type TaskPatchV3JSON struct{
+type TaskPatchV3JSON struct {
 	Attachments TaskPatchAttachments `json:"attachments"`
-	Task struct{
+	Task        struct {
 		Description string `json:"description"`
-	}`json:"task"`
+	} `json:"task"`
 }
 
-type TaskPatchAttachments struct{
+type TaskPatchAttachments struct {
 	PendingFiles []TaskPatchPendingFiles `json:"pendingFiles"`
 }
 
-type TaskPatchPendingFiles struct{
-	CategoryId int `json:"categoryId"`
-	Reference string `json:"reference"`
+type TaskPatchPendingFiles struct {
+	CategoryId int    `json:"categoryId"`
+	Reference  string `json:"reference"`
 }
 
 // TaskResponseHandlerV3 models a http response for a Task operation using version 3 of teamwork api.
@@ -114,11 +115,10 @@ type TaskResponseV3 struct {
 	ID int `json:"id"`
 }
 
-
 type TasksV3 struct {
-	Status   string           `json:"STATUS"`
-	Message  string           `json:"MESSAGE"`
-	Tasks    []TaskResponseV3 `json:"tasks`
+	Status  string           `json:"STATUS"`
+	Message string           `json:"MESSAGE"`
+	Tasks   []TaskResponseV3 `json:"tasks`
 }
 
 // TimeTotals summarizes actual and estimated hours for a specific task.
@@ -161,7 +161,6 @@ type TaskQueryParams struct {
 	CompletedBefore  string `url:"completedBefore"`
 	CompletedAfter   string `url:"completedAfter"`
 }
-
 
 func (resMsg *TaskResponseHandlerV3) ParseResponse(httpMethod string, rawRes []byte) error {
 	// b := string(rawRes)
@@ -244,10 +243,10 @@ func (conn *Connection) GetTaskByIDV3(ID string) (*TaskVersion3, error) {
 	if t.Task.Id == 0 {
 		return nil, fmt.Errorf("failed to retrieve task with ID (%s)", ID)
 	}
-	
+
 	return t, nil
 }
- 
+
 // GetTaskByID retrieves a specific task based on ID.
 func (conn *Connection) GetTaskByID(ID string) (*Task, error) {
 
@@ -300,15 +299,14 @@ func (conn *Connection) GetTasks(queryParams TaskQueryParams) ([]*Task, error) {
 	return tasks.Tasks, nil
 }
 
-
-func (conn *Connection) PatchTask(taskID string, putData TaskPatchV3JSON)(int,error){
+func (conn *Connection) PatchTask(taskID string, putData TaskPatchV3JSON) (int, error) {
 	handler := new(TaskResponseHandlerV3)
 
 	b, err := json.Marshal(putData)
 	if err != nil {
 		return 0, err
 	}
-	
+
 	err = conn.PatchRequest("tasks/"+taskID, b, handler)
 	if err != nil {
 		return 0, err
@@ -344,13 +342,12 @@ func (conn *Connection) PostTask(taskListID string, postData TaskV3JSON) (int, e
 	return handler.Task.ID, nil
 }
 
-func (conn *Connection) GetSubtaskV3(parentTaskID string)(*TasksV3Res, error){
+func (conn *Connection) GetSubtaskV3(parentTaskID string) (*TasksV3Res, error) {
 
-	data, err := conn.GetRequest("tasks/" + parentTaskID + "/subtasks", nil)
+	data, err := conn.GetRequest("tasks/"+parentTaskID+"/subtasks", nil)
 	if err != nil {
 		return nil, err
 	}
-
 
 	tasks := new(TasksV3Res)
 
@@ -364,7 +361,7 @@ func (conn *Connection) GetSubtaskV3(parentTaskID string)(*TasksV3Res, error){
 
 //Creates a subtask given the parent's task ID
 func (conn *Connection) PostSubTask(parentTaskID string, postData TaskV3JSON) (int, error) {
-	
+
 	handler := new(TaskResponseHandlerV3)
 	b, err := json.Marshal(postData)
 	if err != nil {

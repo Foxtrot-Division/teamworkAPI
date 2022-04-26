@@ -2,13 +2,13 @@ package teamworkapi
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/url"
 	"os"
 	"reflect"
 	"strconv"
 	"testing"
-	"fmt"
 )
 
 // type tw struct{
@@ -42,7 +42,7 @@ type taskTestDataJSON struct {
 }
 
 func initTaskTestConnectionV3(t *testing.T) *Connection {
-	
+
 	f, err := os.Open("./testdata/tw_api_conf.json")
 	defer f.Close()
 
@@ -67,7 +67,7 @@ func initTaskTestConnectionV3(t *testing.T) *Connection {
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
-	
+
 	return conn
 }
 
@@ -203,8 +203,8 @@ func TestFormatQueryParams(t *testing.T) {
 	}
 }
 
-func TestGetTaskByIDV3(t *testing.T){
-	taskId := "24064059"
+func TestGetTaskByIDV3(t *testing.T) {
+	taskId := "24095832"
 	conn := initTaskTestConnectionV3(t)
 
 	//task, err := conn.GetTaskByID(v.ExampleTaskID)
@@ -213,10 +213,10 @@ func TestGetTaskByIDV3(t *testing.T){
 		t.Errorf(err.Error())
 	}
 
-	fmt.Println(task.Task.Attachments[0])
+	fmt.Println(task.Task.Status)
 }
 
-func TestGetSubtaskV3(t *testing.T){
+func TestGetSubtaskV3(t *testing.T) {
 	taskId := "24059040"
 	conn := initTaskTestConnectionV3(t)
 
@@ -308,7 +308,7 @@ func TestGetTasks(t *testing.T) {
 	}
 }
 
-func TestAttachFile(t *testing.T){
+func TestAttachFile(t *testing.T) {
 	conn := initTaskTestConnectionV3(t)
 
 	f, err := os.Open("testdata/tw_api_conf.json")
@@ -331,20 +331,20 @@ func TestAttachFile(t *testing.T){
 	}
 
 	fc, err := NewFileConnection(data.SiteName, "Test_PDF_New.pdf", "testdata/Test_PDF_New.pdf", data.APIKey)
-	if err != nil{
+	if err != nil {
 		t.Error(err)
 	}
 
 	fileID, err := fc.PutFile()
-	if err != nil{
+	if err != nil {
 		t.Error(err)
 	}
 
-	jsonString := fmt.Sprintf(`{"attachments": {"pendingFiles": [{"categoryId": 0, "reference": "%v"}]}}`,fileID)
+	jsonString := fmt.Sprintf(`{"attachments": {"pendingFiles": [{"categoryId": 0, "reference": "%v"}]}}`, fileID)
 	//jsonString := fmt.Sprintf(`{"attachments":{"pendingFiles":[{"categoryId":0, "reference":"%v"}]}}`,"tf_341a8e1f-c840-440e-8891-ff3c70957643")
 
 	//data := new(TaskPatchV3JSON)
-	var taskPatchV3JSON TaskPatchV3JSON	
+	var taskPatchV3JSON TaskPatchV3JSON
 
 	err = json.Unmarshal([]byte(jsonString), &taskPatchV3JSON)
 	if err != nil {
@@ -352,20 +352,20 @@ func TestAttachFile(t *testing.T){
 	}
 
 	ret, err := conn.PatchTask("24040057", taskPatchV3JSON)
-	if err != nil{
+	if err != nil {
 		t.Error(err)
 	}
 
-	if ret == 0{
+	if ret == 0 {
 		t.Errorf("unknown error attaching file to task")
 	}
 }
 
 func TestCreateTask(t *testing.T) {
 	conn := initTaskTestConnectionV3(t)
-//	testData := loadTaskTestDataV3(t)
+	//	testData := loadTaskTestDataV3(t)
 
-//	fmt.Println(testData)
+	//	fmt.Println(testData)
 
 	taskJSON := `{"task": {"name": "Verify Time Logged/2022-04-01 Matt, Shilinski","dueAt":"2022-04-01", "startAt":"2022-03-29", "description": "TEST","assignees": {"userIds": [179618]}}}`
 	var taskJSONData TaskV3JSON
@@ -385,7 +385,7 @@ func TestCreateTask(t *testing.T) {
 
 func TestCreateSubTask(t *testing.T) {
 	conn := initTaskTestConnectionV3(t)
-//	testData := loadSubTaskTestDataV3(t)
+	//	testData := loadSubTaskTestDataV3(t)
 
 	//taskJSON := fmt.Sprintf(`{"task": {"name": "Verify Time Logged/%v %v, %v","description": "%v","parentTaskId": %v,"assignees": {"userIds": [%v]}}}`,"2022-04-01", "Darth", "Vader", "TEST", 24040057, 179618)
 
@@ -405,7 +405,7 @@ func TestCreateSubTask(t *testing.T) {
 		t.Errorf(err.Error())
 	}
 
-	if ret == 0{
+	if ret == 0 {
 		t.Error("unknown error")
 	}
 	//	fmt.Println(postSubTask)
