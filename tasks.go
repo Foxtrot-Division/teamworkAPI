@@ -89,9 +89,9 @@ type TaskRes struct {
 }
 
 type TaskPatchV3JSON struct {
-	Attachments TaskPatchAttachments `json:"attachments"`
+	Attachments TaskPatchAttachments `json:"attachments,omitempty"`
 	Task        struct {
-		Description string `json:"description"`
+		Description string `json:"description,omitempty"`
 	} `json:"task"`
 }
 
