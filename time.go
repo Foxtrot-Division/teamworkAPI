@@ -81,7 +81,7 @@ type TimeLogV3 struct {
 	Minutes    int     `json:"minutes"`
 	TaskID     int     `json:"taskId"`
 	ProjectID  int     `json:"projectId"`
-	TimeLogged string  `json:"timeLogged"`
+	TimeLogged string  `json:"timeLogged"` //Date?
 }
 
 type TimeLogJSON struct {
